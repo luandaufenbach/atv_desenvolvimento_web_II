@@ -25,5 +25,50 @@
     "telefone": "4834330000",
     "endereco": "Rua Henrique Lage, 50 - Centro, Criciúma/SC",
     "dataCadastro": "2026-09-22"
+  },
+  {
+    "id": 4,
+    "nome": "Tech Bra Ltda",
+    "cnpj": "12345222000190",
+    "email": "contato@techbra.com",
+    "telefone": "4834220000",
+    "endereco": "Rua das Flores, 100 - Centro, Criciúma/SC",
+    "dataCadastro": "2026-10-04"
+  },
+  {
+    "id": 5,
+    "nome": "Contabilidade Mineira",
+    "cnpj": "23456789000155",
+    "email": "financeiro@contabilmineira.com",
+    "telefone": "4834360000",
+    "endereco": "Rua Coronel Pedro Benedet, 210 - Centro, Criciúma/SC",
+    "dataCadastro": "2026-09-25"
+  },
+  {
+    "id": 6,
+    "nome": "Studio Criativo Design",
+    "cnpj": "34567890000166",
+    "email": "ola@studiocriativo.com",
+    "telefone": "4834370000",
+    "endereco": "Av. Centenário, 1800 - Centro, Criciúma/SC",
+    "dataCadastro": "2026-10-01"
+  },
+  {
+    "id": 7,
+    "nome": "Lab Saúde Diagnósticos",
+    "cnpj": "56789012000177",
+    "email": "atendimento@labsaude.com",
+    "telefone": "4834380000",
+    "endereco": "Rua João Pessoa, 77 - Centro, Criciúma/SC",
+    "dataCadastro": "2026-10-01"
+  },
+  {
+    "id": 8,
+    "nome": "Escola de Idiomas Fala Mais",
+    "cnpj": "67890123000188",
+    "email": "contato@falamais.com",
+    "telefone": "4834390000",
+    "endereco": "Rua Seis de Janeiro, 400 - Michel, Criciúma/SC",
+    "dataCadastro": "2026-10-03"
   }
 ]

@@ -2,7 +2,7 @@
   {
     "id": 1,
     "nome": "Ana Souza",
-    "email": "ana@email.com",
+    "email": "ana1@email.com",
     "senha": "123456",
     "telefone": "48999990000",
     "dataCadastro": "2026-09-20"
@@ -22,5 +22,61 @@
     "senha": "123456",
     "telefone": "48999990000",
     "dataCadastro": "2026-09-20"
+  },
+  {
+    "id": 4,
+    "nome": "Rafael Lima",
+    "email": "rafa@email.com",
+    "senha": "123456",
+    "telefone": "48922990000",
+    "dataCadastro": "2026-10-04"
+  },
+  {
+    "id": 5,
+    "nome": "Beatriz Martins",
+    "email": "beatriz@email.com",
+    "senha": "123456",
+    "telefone": "48991234567",
+    "dataCadastro": "2026-09-25"
+  },
+  {
+    "id": 6,
+    "nome": "Carlos Eduardo Pereira",
+    "email": "carlos@email.com",
+    "senha": "123456",
+    "telefone": "48992345678",
+    "dataCadastro": "2026-09-25"
+  },
+  {
+    "id": 7,
+    "nome": "Fernanda Costa",
+    "email": "fernanda@email.com",
+    "senha": "123456",
+    "telefone": "48993456789",
+    "dataCadastro": "2026-10-01"
+  },
+  {
+    "id": 8,
+    "nome": "Gabriel Mendes",
+    "email": "gabriel@email.com",
+    "senha": "123456",
+    "telefone": "48994567890",
+    "dataCadastro": "2026-10-01"
+  },
+  {
+    "id": 9,
+    "nome": "João Vitor",
+    "email": "joaovitor@email.com",
+    "senha": "123456",
+    "telefone": "48995678901",
+    "dataCadastro": "2026-10-02"
+  },
+  {
+    "id": 10,
+    "nome": "Juliana Rocha",
+    "email": "juliana@email.com",
+    "senha": "123456",
+    "telefone": "48996789012",
+    "dataCadastro": "2026-10-03"
   }
 ]

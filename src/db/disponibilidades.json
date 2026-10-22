@@ -22,5 +22,77 @@
     "horaInicio": "14:00",
     "horaFim": "22:00",
     "permiteExterno": false
+  },
+  {
+    "id": 4,
+    "espacoId": 1,
+    "diaSemana": 3,
+    "horaInicio": "08:00",
+    "horaFim": "18:00",
+    "permiteExterno": true
+  },
+  {
+    "id": 5,
+    "espacoId": 1,
+    "diaSemana": 4,
+    "horaInicio": "08:00",
+    "horaFim": "18:00",
+    "permiteExterno": true
+  },
+  {
+    "id": 6,
+    "espacoId": 1,
+    "diaSemana": 5,
+    "horaInicio": "08:00",
+    "horaFim": "18:00",
+    "permiteExterno": true
+  },
+  {
+    "id": 7,
+    "espacoId": 2,
+    "diaSemana": 5,
+    "horaInicio": "08:00",
+    "horaFim": "12:00",
+    "permiteExterno": false
+  },
+  {
+    "id": 8,
+    "espacoId": 4,
+    "diaSemana": 1,
+    "horaInicio": "09:00",
+    "horaFim": "17:00",
+    "permiteExterno": true
+  },
+  {
+    "id": 9,
+    "espacoId": 4,
+    "diaSemana": 4,
+    "horaInicio": "09:00",
+    "horaFim": "17:00",
+    "permiteExterno": true
+  },
+  {
+    "id": 10,
+    "espacoId": 5,
+    "diaSemana": 2,
+    "horaInicio": "13:00",
+    "horaFim": "21:00",
+    "permiteExterno": false
+  },
+  {
+    "id": 11,
+    "espacoId": 6,
+    "diaSemana": 6,
+    "horaInicio": "08:00",
+    "horaFim": "12:00",
+    "permiteExterno": true
+  },
+  {
+    "id": 12,
+    "espacoId": 7,
+    "diaSemana": 3,
+    "horaInicio": "08:00",
+    "horaFim": "18:00",
+    "permiteExterno": true
   }
 ]

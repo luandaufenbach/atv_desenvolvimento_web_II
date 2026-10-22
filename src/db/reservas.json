@@ -9,5 +9,82 @@
     "horaFim": "16:00",
     "status": "CONFIRMADA",
     "dataCadastro": "2026-10-04"
+  },
+  {
+    "id": 2,
+    "espacoId": 1,
+    "usuarioId": 2,
+    "empresaId": null,
+    "data": "2026-10-12",
+    "horaInicio": "09:00",
+    "horaFim": "11:00",
+    "status": "CONFIRMADA",
+    "dataCadastro": "2026-10-05"
+  },
+  {
+    "id": 3,
+    "espacoId": 1,
+    "usuarioId": 5,
+    "empresaId": 1,
+    "data": "2026-10-13",
+    "horaInicio": "09:00",
+    "horaFim": "12:00",
+    "status": "CONFIRMADA",
+    "dataCadastro": "2026-10-05"
+  },
+  {
+    "id": 4,
+    "espacoId": 2,
+    "usuarioId": 6,
+    "empresaId": 2,
+    "data": "2026-10-14",
+    "horaInicio": "14:00",
+    "horaFim": "17:00",
+    "status": "CONFIRMADA",
+    "dataCadastro": "2026-10-05"
+  },
+  {
+    "id": 5,
+    "espacoId": 4,
+    "usuarioId": 7,
+    "empresaId": 5,
+    "data": "2026-10-12",
+    "horaInicio": "10:00",
+    "horaFim": "12:00",
+    "status": "CONFIRMADA",
+    "dataCadastro": "2026-10-05"
+  },
+  {
+    "id": 6,
+    "espacoId": 5,
+    "usuarioId": 8,
+    "empresaId": 6,
+    "data": "2026-10-13",
+    "horaInicio": "18:00",
+    "horaFim": "20:00",
+    "status": "CANCELADA",
+    "dataCadastro": "2026-10-05"
+  },
+  {
+    "id": 7,
+    "espacoId": 7,
+    "usuarioId": 9,
+    "empresaId": null,
+    "data": "2026-10-14",
+    "horaInicio": "09:00",
+    "horaFim": "10:00",
+    "status": "CONFIRMADA",
+    "dataCadastro": "2026-10-05"
+  },
+  {
+    "id": 8,
+    "espacoId": 6,
+    "usuarioId": 10,
+    "empresaId": null,
+    "data": "2026-10-17",
+    "horaInicio": "08:00",
+    "horaFim": "10:00",
+    "status": "CONFIRMADA",
+    "dataCadastro": "2026-10-05"
   }
 ]
