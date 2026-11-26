@@ -1,25 +1,14 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+
+const Empresa = require('../models/Empresa');
+const Reserva = require('../models/Reserva');
+const { idValido, escaparRegex, hoje } = require('../utils/validacoes');
 
 const router = express.Router();
 
-const caminho = path.join(__dirname, '../db/empresas.json');
-
-// le o arquivo JSON e devolve o array de empresas
-function lerEmpresas() {
-  const dados = fs.readFileSync(caminho, 'utf-8');
-  return JSON.parse(dados);
-}
-
-// grava o array de empresas no arquivo JSON (indentado com 2 espacos)
-function salvarEmpresas(empresas) {
-  fs.writeFileSync(caminho, JSON.stringify(empresas, null, 2));
-}
-
-// Deixa so os números do CNPJ: "12.345.678/0001-90" vira "12345678000190"
+// Deixa só os números do CNPJ (aceita "12.345.678/0001-90")
 function limparCnpj(cnpj) {
-  return String(cnpj).replace(/\D/g, '');
+  return String(cnpj || '').replace(/\D/g, '');
 }
 
 /**
@@ -33,15 +22,14 @@ function limparCnpj(cnpj) {
  *     Empresa:
  *       type: object
  *       properties:
- *         id:
- *           type: integer
- *           example: 1
+ *         _id:
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34cd
  *         nome:
  *           type: string
  *           example: Tech Sul Ltda
  *         cnpj:
  *           type: string
- *           description: Apenas os 14 números
  *           example: "12345678000190"
  *         email:
  *           type: string
@@ -67,8 +55,8 @@ function limparCnpj(cnpj) {
  *           example: Tech Sul Ltda
  *         cnpj:
  *           type: string
- *           description: Aceita com ou sem pontuação, precisa ter 14 números
- *           example: "12.345.678/0001-90"
+ *           description: 14 números (pontuação é ignorada)
+ *           example: "12345678000190"
  *         email:
  *           type: string
  *           example: contato@techsul.com
@@ -96,10 +84,8 @@ function limparCnpj(cnpj) {
  *               items:
  *                 $ref: '#/components/schemas/Empresa'
  */
-router.get('/', (req, res) => {
-  const empresas = lerEmpresas().sort((a, b) => a.nome.localeCompare(b.nome));
-
-  res.json(empresas);
+router.get('/', async (req, res) => {
+  res.json(await Empresa.find().sort({ nome: 1 }));
 });
 
 /**
@@ -114,7 +100,7 @@ router.get('/', (req, res) => {
  *         required: true
  *         schema:
  *           type: string
- *         example: sul
+ *         example: tech
  *     responses:
  *       200:
  *         description: Empresas encontradas (pode ser uma lista vazia)
@@ -125,10 +111,10 @@ router.get('/', (req, res) => {
  *               items:
  *                 $ref: '#/components/schemas/Empresa'
  */
-router.get('/nome/:nome', (req, res) => {
-  const busca = req.params.nome.toLowerCase();
-
-  const empresas = lerEmpresas().filter((e) => e.nome.toLowerCase().includes(busca));
+router.get('/nome/:nome', async (req, res) => {
+  const empresas = await Empresa.find({
+    nome: { $regex: escaparRegex(req.params.nome), $options: 'i' },
+  }).sort({ nome: 1 });
 
   res.json(empresas);
 });
@@ -147,7 +133,7 @@ router.get('/nome/:nome', (req, res) => {
  *         schema:
  *           type: string
  *           format: date
- *         example: "2026-09-22"
+ *         example: "2026-09-20"
  *     responses:
  *       200:
  *         description: Empresas cadastradas na data (pode ser uma lista vazia)
@@ -158,10 +144,8 @@ router.get('/nome/:nome', (req, res) => {
  *               items:
  *                 $ref: '#/components/schemas/Empresa'
  */
-router.get('/data/:data', (req, res) => {
-  const empresas = lerEmpresas().filter((e) => e.dataCadastro === req.params.data);
-
-  res.json(empresas);
+router.get('/data/:data', async (req, res) => {
+  res.json(await Empresa.find({ dataCadastro: req.params.data }).sort({ nome: 1 }));
 });
 
 /**
@@ -174,7 +158,6 @@ router.get('/data/:data', (req, res) => {
  *       - in: path
  *         name: cnpj
  *         required: true
- *         description: Apenas números (sem pontos, barra ou traço)
  *         schema:
  *           type: string
  *         example: "12345678000190"
@@ -192,9 +175,8 @@ router.get('/data/:data', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.get('/cnpj/:cnpj', (req, res) => {
-  const cnpj = limparCnpj(req.params.cnpj);
-  const empresa = lerEmpresas().find((e) => e.cnpj === cnpj);
+router.get('/cnpj/:cnpj', async (req, res) => {
+  const empresa = await Empresa.findOne({ cnpj: limparCnpj(req.params.cnpj) });
 
   if (!empresa) {
     return res.status(404).json({ mensagem: 'Empresa não encontrada' });
@@ -214,8 +196,7 @@ router.get('/cnpj/:cnpj', (req, res) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Empresa encontrada
@@ -230,9 +211,8 @@ router.get('/cnpj/:cnpj', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.get('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const empresa = lerEmpresas().find((e) => e.id === id);
+router.get('/:id', async (req, res) => {
+  const empresa = idValido(req.params.id) ? await Empresa.findById(req.params.id) : null;
 
   if (!empresa) {
     return res.status(404).json({ mensagem: 'Empresa não encontrada' });
@@ -273,42 +253,32 @@ router.get('/:id', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.post('/', (req, res) => {
-  const { nome, cnpj: cnpjEnviado, email, telefone, endereco } = req.body || {};
+router.post('/', async (req, res) => {
+  const { nome, cnpj, email, telefone, endereco } = req.body || {};
 
-  if (!nome || !cnpjEnviado) {
+  if (!nome || !cnpj) {
     return res.status(400).json({ mensagem: 'Nome e CNPJ são obrigatórios' });
   }
 
-  const cnpj = limparCnpj(cnpjEnviado);
-
-  if (cnpj.length !== 14) {
+  const cnpjLimpo = limparCnpj(cnpj);
+  if (cnpjLimpo.length !== 14) {
     return res.status(400).json({ mensagem: 'CNPJ deve ter 14 números' });
   }
 
-  const empresas = lerEmpresas();
-
-  if (empresas.some((e) => e.cnpj === cnpj)) {
+  if (await Empresa.exists({ cnpj: cnpjLimpo })) {
     return res.status(409).json({ mensagem: 'CNPJ já cadastrado' });
   }
 
-  // Próximo id = maior id existente + 1
-  const novoId = empresas.reduce((maior, e) => Math.max(maior, e.id), 0) + 1;
-
-  const novaEmpresa = {
-    id: novoId,
+  const empresa = await Empresa.create({
     nome,
-    cnpj,
+    cnpj: cnpjLimpo,
     email: email || '',
     telefone: telefone || '',
     endereco: endereco || '',
-    dataCadastro: new Date().toLocaleDateString('en-CA'), // AAAA-MM-DD no fuso local
-  };
+    dataCadastro: hoje(),
+  });
 
-  empresas.push(novaEmpresa);
-  salvarEmpresas(empresas);
-
-  res.status(201).json(novaEmpresa);
+  res.status(201).json(empresa);
 });
 
 /**
@@ -322,8 +292,7 @@ router.post('/', (req, res) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -356,45 +325,37 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.put('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const empresas = lerEmpresas();
-  const indice = empresas.findIndex((e) => e.id === id);
+router.put('/:id', async (req, res) => {
+  const empresa = idValido(req.params.id) ? await Empresa.findById(req.params.id) : null;
 
-  if (indice === -1) {
+  if (!empresa) {
     return res.status(404).json({ mensagem: 'Empresa não encontrada' });
   }
 
-  const { nome, cnpj: cnpjEnviado, email, telefone, endereco } = req.body || {};
-  let cnpj;
+  const { nome, cnpj, email, telefone, endereco } = req.body || {};
 
-  if (cnpjEnviado !== undefined) {
-    cnpj = limparCnpj(cnpjEnviado);
-
-    if (cnpj.length !== 14) {
-      return res.status(400).json({ mensagem: 'CNPJ deve ter 14 números' });
-    }
-
-    if (empresas.some((e) => e.cnpj === cnpj && e.id !== id)) {
-      return res.status(409).json({ mensagem: 'CNPJ já cadastrado para outra empresa' });
-    }
+  if (nome !== undefined && !String(nome).trim()) {
+    return res.status(400).json({ mensagem: 'Nome não pode ficar vazio' });
   }
 
-  // mantém os valores antigos para os campos que não vieram no body.
-  // id e dataCadastro não podem ser alterados.
-  const atualizada = {
-    ...empresas[indice],
-    ...(nome !== undefined && { nome }),
-    ...(cnpj !== undefined && { cnpj }),
-    ...(email !== undefined && { email }),
-    ...(telefone !== undefined && { telefone }),
-    ...(endereco !== undefined && { endereco }),
-  };
+  if (cnpj !== undefined) {
+    const cnpjLimpo = limparCnpj(cnpj);
+    if (cnpjLimpo.length !== 14) {
+      return res.status(400).json({ mensagem: 'CNPJ deve ter 14 números' });
+    }
+    if (await Empresa.exists({ cnpj: cnpjLimpo, _id: { $ne: empresa._id } })) {
+      return res.status(409).json({ mensagem: 'CNPJ já cadastrado para outra empresa' });
+    }
+    empresa.cnpj = cnpjLimpo;
+  }
 
-  empresas[indice] = atualizada;
-  salvarEmpresas(empresas);
+  if (nome !== undefined) empresa.nome = nome;
+  if (email !== undefined) empresa.email = email;
+  if (telefone !== undefined) empresa.telefone = telefone;
+  if (endereco !== undefined) empresa.endereco = endereco;
 
-  res.json(atualizada);
+  await empresa.save();
+  res.json(empresa);
 });
 
 /**
@@ -402,14 +363,14 @@ router.put('/:id', (req, res) => {
  * /empresas/{id}:
  *   delete:
  *     summary: Remove uma empresa
+ *     description: Regra — não é possível excluir uma empresa vinculada a reservas.
  *     tags: [Empresas]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 3
+ *           type: string
  *     responses:
  *       200:
  *         description: Empresa removida
@@ -423,18 +384,28 @@ router.put('/:id', (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Empresa vinculada a reservas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.delete('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const empresas = lerEmpresas();
-  const empresa = empresas.find((e) => e.id === id);
+router.delete('/:id', async (req, res) => {
+  const empresa = idValido(req.params.id) ? await Empresa.findById(req.params.id) : null;
 
   if (!empresa) {
     return res.status(404).json({ mensagem: 'Empresa não encontrada' });
   }
 
-  salvarEmpresas(empresas.filter((e) => e.id !== id));
+  const totalReservas = await Reserva.countDocuments({ empresaId: empresa._id });
+  if (totalReservas > 0) {
+    return res.status(409).json({
+      mensagem: `Não é possível excluir: a empresa está vinculada a ${totalReservas} reserva(s). Cancele e exclua as reservas antes.`,
+    });
+  }
 
+  await empresa.deleteOne();
   res.json(empresa);
 });
 

@@ -1,27 +1,11 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const bcrypt = require('bcryptjs');
+
+const Usuario = require('../models/Usuario');
+const Reserva = require('../models/Reserva');
+const { idValido, escaparRegex, hoje } = require('../utils/validacoes');
 
 const router = express.Router();
-
-const caminho = path.join(__dirname, '../db/usuarios.json');
-
-// le o arquivo JSON e devolve o array de users
-function lerUsuarios() {
-  const dados = fs.readFileSync(caminho, 'utf-8');
-  return JSON.parse(dados);
-}
-
-// grava o array de users no arquivo JSON (indentado com 2 espacos)
-function salvarUsuarios(usuarios) {
-  fs.writeFileSync(caminho, JSON.stringify(usuarios, null, 2));
-}
-
-// Remove a senha antes de devolver o user na res
-function semSenha(usuario) {
-  const { senha, ...resto } = usuario;
-  return resto;
-}
 
 /**
  * @swagger
@@ -34,9 +18,9 @@ function semSenha(usuario) {
  *     Usuario:
  *       type: object
  *       properties:
- *         id:
- *           type: integer
- *           example: 1
+ *         _id:
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34cd
  *         nome:
  *           type: string
  *           example: Ana Souza
@@ -93,11 +77,8 @@ function semSenha(usuario) {
  *               items:
  *                 $ref: '#/components/schemas/Usuario'
  */
-router.get('/', (req, res) => {
-  const usuarios = lerUsuarios()
-    .map(semSenha)
-    .sort((a, b) => a.nome.localeCompare(b.nome));
-
+router.get('/', async (req, res) => {
+  const usuarios = await Usuario.find().sort({ nome: 1 });
   res.json(usuarios);
 });
 
@@ -124,12 +105,10 @@ router.get('/', (req, res) => {
  *               items:
  *                 $ref: '#/components/schemas/Usuario'
  */
-router.get('/nome/:nome', (req, res) => {
-  const busca = req.params.nome.toLowerCase();
-
-  const usuarios = lerUsuarios()
-    .filter((u) => u.nome.toLowerCase().includes(busca))
-    .map(semSenha);
+router.get('/nome/:nome', async (req, res) => {
+  const usuarios = await Usuario.find({
+    nome: { $regex: escaparRegex(req.params.nome), $options: 'i' },
+  }).sort({ nome: 1 });
 
   res.json(usuarios);
 });
@@ -159,11 +138,8 @@ router.get('/nome/:nome', (req, res) => {
  *               items:
  *                 $ref: '#/components/schemas/Usuario'
  */
-router.get('/data/:data', (req, res) => {
-  const usuarios = lerUsuarios()
-    .filter((u) => u.dataCadastro === req.params.data)
-    .map(semSenha);
-
+router.get('/data/:data', async (req, res) => {
+  const usuarios = await Usuario.find({ dataCadastro: req.params.data }).sort({ nome: 1 });
   res.json(usuarios);
 });
 
@@ -178,8 +154,7 @@ router.get('/data/:data', (req, res) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Usuário encontrado
@@ -194,22 +169,21 @@ router.get('/data/:data', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.get('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const usuario = lerUsuarios().find((u) => u.id === id);
+router.get('/:id', async (req, res) => {
+  const usuario = idValido(req.params.id) ? await Usuario.findById(req.params.id) : null;
 
   if (!usuario) {
     return res.status(404).json({ mensagem: 'Usuário não encontrado' });
   }
 
-  res.json(semSenha(usuario));
+  res.json(usuario);
 });
 
 /**
  * @swagger
  * /usuarios:
  *   post:
- *     summary: Cadastra um novo usuário
+ *     summary: Cadastra um novo usuário (a senha é salva com hash)
  *     tags: [Usuários]
  *     requestBody:
  *       required: true
@@ -237,50 +211,44 @@ router.get('/:id', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { nome, email, senha, telefone } = req.body || {};
 
   if (!nome || !email || !senha) {
     return res.status(400).json({ mensagem: 'Nome, email e senha são obrigatórios' });
   }
 
-  const usuarios = lerUsuarios();
+  if (String(senha).length < 6) {
+    return res.status(400).json({ mensagem: 'A senha deve ter pelo menos 6 caracteres' });
+  }
 
-  if (usuarios.some((u) => u.email === email)) {
+  if (await Usuario.exists({ email: String(email).toLowerCase().trim() })) {
     return res.status(409).json({ mensagem: 'E-mail já cadastrado' });
   }
 
-  // Próximo id = maior id existente + 1
-  const novoId = usuarios.reduce((maior, u) => Math.max(maior, u.id), 0) + 1;
-
-  const novoUsuario = {
-    id: novoId,
+  const usuario = await Usuario.create({
     nome,
     email,
-    senha,
+    senha: await bcrypt.hash(String(senha), 10),
     telefone: telefone || '',
-    dataCadastro: new Date().toLocaleDateString('en-CA'), // AAAA-MM-DD no fuso local
-  };
+    dataCadastro: hoje(),
+  });
 
-  usuarios.push(novoUsuario);
-  salvarUsuarios(usuarios);
-
-  res.status(201).json(semSenha(novoUsuario));
+  res.status(201).json(usuario);
 });
 
 /**
  * @swagger
  * /usuarios/{id}:
  *   put:
- *     summary: Atualiza um usuário (envie só os campos que quer alterar)
+ *     summary: Atualiza um usuário (envie só os campos que quer alterar; senha vazia mantém a atual)
  *     tags: [Usuários]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -294,6 +262,12 @@ router.post('/', (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Usuario'
+ *       400:
+ *         description: Campos inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  *       404:
  *         description: Usuário não encontrado
  *         content:
@@ -307,35 +281,43 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.put('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const usuarios = lerUsuarios();
-  const indice = usuarios.findIndex((u) => u.id === id);
+router.put('/:id', async (req, res) => {
+  const usuario = idValido(req.params.id) ? await Usuario.findById(req.params.id) : null;
 
-  if (indice === -1) {
+  if (!usuario) {
     return res.status(404).json({ mensagem: 'Usuário não encontrado' });
   }
 
   const { nome, email, senha, telefone } = req.body || {};
 
-  if (email && usuarios.some((u) => u.email === email && u.id !== id)) {
-    return res.status(409).json({ mensagem: 'E-mail já cadastrado para outro usuário' });
+  if (nome !== undefined && !String(nome).trim()) {
+    return res.status(400).json({ mensagem: 'Nome não pode ficar vazio' });
   }
 
-  // Mantém os valores antigos para os campos que não vieram no body.
-  // id e dataCadastro não podem ser alterados.
-  const atualizado = {
-    ...usuarios[indice],
-    ...(nome !== undefined && { nome }),
-    ...(email !== undefined && { email }),
-    ...(senha !== undefined && { senha }),
-    ...(telefone !== undefined && { telefone }),
-  };
+  if (email !== undefined) {
+    if (!String(email).trim()) {
+      return res.status(400).json({ mensagem: 'E-mail não pode ficar vazio' });
+    }
+    const emailNormalizado = String(email).toLowerCase().trim();
+    if (await Usuario.exists({ email: emailNormalizado, _id: { $ne: usuario._id } })) {
+      return res.status(409).json({ mensagem: 'E-mail já cadastrado para outro usuário' });
+    }
+    usuario.email = emailNormalizado;
+  }
 
-  usuarios[indice] = atualizado;
-  salvarUsuarios(usuarios);
+  if (nome !== undefined) usuario.nome = nome;
+  if (telefone !== undefined) usuario.telefone = telefone;
 
-  res.json(semSenha(atualizado));
+  // senha só muda se vier preenchida
+  if (senha) {
+    if (String(senha).length < 6) {
+      return res.status(400).json({ mensagem: 'A senha deve ter pelo menos 6 caracteres' });
+    }
+    usuario.senha = await bcrypt.hash(String(senha), 10);
+  }
+
+  await usuario.save();
+  res.json(usuario);
 });
 
 /**
@@ -343,14 +325,22 @@ router.put('/:id', (req, res) => {
  * /usuarios/{id}:
  *   delete:
  *     summary: Remove um usuário
+ *     description: |
+ *       Regras: não é possível excluir um usuário que possui reservas (mesmo canceladas —
+ *       exclua as reservas antes) nem o próprio usuário logado (header x-usuario-id).
  *     tags: [Usuários]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 3
+ *           type: string
+ *       - in: header
+ *         name: x-usuario-id
+ *         required: false
+ *         description: Id do usuário logado
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Usuário removido
@@ -364,19 +354,33 @@ router.put('/:id', (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Usuário possui reservas ou é o usuário logado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.delete('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const usuarios = lerUsuarios();
-  const usuario = usuarios.find((u) => u.id === id);
+router.delete('/:id', async (req, res) => {
+  const usuario = idValido(req.params.id) ? await Usuario.findById(req.params.id) : null;
 
   if (!usuario) {
     return res.status(404).json({ mensagem: 'Usuário não encontrado' });
   }
 
-  salvarUsuarios(usuarios.filter((u) => u.id !== id));
+  if (req.get('x-usuario-id') === String(usuario._id)) {
+    return res.status(409).json({ mensagem: 'Você não pode excluir o seu próprio usuário' });
+  }
 
-  res.json(semSenha(usuario));
+  const totalReservas = await Reserva.countDocuments({ usuarioId: usuario._id });
+  if (totalReservas > 0) {
+    return res.status(409).json({
+      mensagem: `Não é possível excluir: o usuário possui ${totalReservas} reserva(s). Cancele e exclua as reservas antes.`,
+    });
+  }
+
+  await usuario.deleteOne();
+  res.json(usuario);
 });
 
 module.exports = router;
