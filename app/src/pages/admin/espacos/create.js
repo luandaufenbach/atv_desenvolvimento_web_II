@@ -30,7 +30,7 @@ export default function CreateEspaco() {
   const handleCreateEspaco = async () => {
     try {
       const response = await Axios.post(API_URL, espaco);
-      setMensagem({ message: `Espaço "${response.data.nome}" cadastrado com sucesso!`, status: 'ok' });
+      setMensagem({ message: `Espaço "${response.data.nome}" cadastrado com sucesso.`, status: 'ok' });
       setEspaco(VAZIO);
     } catch (error) {
       console.log('Erro ao criar o espaço:', error);
@@ -41,12 +41,10 @@ export default function CreateEspaco() {
   return (
     <AdminLayout titulo="Novo espaço" ativo="espacos">
       <FormLayout
-        titulo="Dados do espaço"
-        icone="meeting_room"
         voltar="/admin/espacos"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleCreateEspaco}>
+          <Button caps onClick={handleCreateEspaco}>
             Salvar
           </Button>
         }

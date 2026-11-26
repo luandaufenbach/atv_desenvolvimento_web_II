@@ -43,7 +43,7 @@ export default function DeleteDisponibilidade() {
     try {
       await Axios.delete(API_URL + pid);
       setExcluida(true);
-      setMensagem({ message: 'Disponibilidade excluída com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Disponibilidade excluída com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao deletar a disponibilidade:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao deletar a disponibilidade!'), status: 'error' });
@@ -54,21 +54,20 @@ export default function DeleteDisponibilidade() {
     <AdminLayout titulo="Excluir disponibilidade" ativo="disponibilidades">
       <FormLayout
         titulo="Disponibilidade"
-        icone="event_available"
         voltar="/admin/disponibilidades"
         mensagem={mensagem}
         aviso={
           !excluida && (
             <Alert
               mensagem={{
-                message: 'Confira os dados. A exclusão não pode ser desfeita. Se houver reservas confirmadas futuras dentro deste horário, cancele-as antes.',
+                message: 'Esta ação não pode ser desfeita.',
                 status: 'info',
               }}
             />
           )
         }
         acoes={
-          <Button variant="danger" caps icon="delete" onClick={handleDeleteDisponibilidade} disabled={!carregada || excluida}>
+          <Button variant="danger" caps onClick={handleDeleteDisponibilidade} disabled={!carregada || excluida}>
             Deletar
           </Button>
         }

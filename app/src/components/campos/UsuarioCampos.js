@@ -11,17 +11,17 @@ export default function UsuarioCampos({ usuario, onChange, modo = 'read' }) {
   return (
     <>
       <Linha>
-        <TextField label="Nome" name="nome" placeholder="ex.: Ana Souza" value={usuario.nome} onChange={onChange} readOnly={readOnly} />
+        <TextField label="Nome" name="nome" value={usuario.nome} onChange={onChange} readOnly={readOnly} />
       </Linha>
-      <TextField label="E-mail" type="email" name="email" placeholder="ex.: ana@email.com" value={usuario.email} onChange={onChange} readOnly={readOnly} />
-      <TextField label="Telefone" name="telefone" placeholder="ex.: 48999990000" value={usuario.telefone} onChange={onChange} readOnly={readOnly} />
+      <TextField label="E-mail" type="email" name="email" value={usuario.email} onChange={onChange} readOnly={readOnly} />
+      <TextField label="Telefone" name="telefone" value={usuario.telefone} onChange={onChange} readOnly={readOnly} />
       {!readOnly && (
         <TextField
           label={modo === 'update' ? 'Nova senha' : 'Senha'}
           type="password"
           name="senha"
           autoComplete="new-password"
-          placeholder="Mínimo de 6 caracteres"
+          placeholder="Mínimo 6 caracteres"
           hint={modo === 'update' ? 'Deixe em branco para manter a senha atual.' : undefined}
           value={usuario.senha || ''}
           onChange={onChange}

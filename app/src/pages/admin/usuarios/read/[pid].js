@@ -37,15 +37,14 @@ export default function ReadUsuario() {
     <AdminLayout titulo="Detalhes do usuário" ativo="usuarios">
       <FormLayout
         titulo={usuario.nome || 'Usuário'}
-        icone="person"
         voltar="/admin/usuarios"
         mensagem={mensagem}
         acoes={
           <>
-            <Button variant="secondary" icon="edit" href={`/admin/usuarios/update/${pid}`}>
+            <Button variant="secondary" href={`/admin/usuarios/update/${pid}`}>
               Editar
             </Button>
-            <Button variant="subtle" icon="calendar_month" href={`/admin/reservas?usuario=${pid}`}>
+            <Button variant="subtle" href={`/admin/reservas?usuario=${pid}`}>
               Reservas
             </Button>
           </>

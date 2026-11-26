@@ -7,15 +7,15 @@ export default function EmpresaCampos({ empresa, onChange, readOnly = false }) {
   return (
     <>
       <Linha>
-        <TextField label="Nome" name="nome" placeholder="ex.: Tech Sul Ltda" value={empresa.nome} onChange={onChange} readOnly={readOnly} />
+        <TextField label="Nome" name="nome" value={empresa.nome} onChange={onChange} readOnly={readOnly} />
       </Linha>
-      <TextField label="CNPJ" name="cnpj" placeholder="14 números" hint={readOnly ? undefined : 'Somente números ou com pontuação.'} value={empresa.cnpj} onChange={onChange} readOnly={readOnly} />
-      <TextField label="Telefone" name="telefone" placeholder="ex.: 4834310000" value={empresa.telefone} onChange={onChange} readOnly={readOnly} />
+      <TextField label="CNPJ" name="cnpj" value={empresa.cnpj} onChange={onChange} readOnly={readOnly} />
+      <TextField label="Telefone" name="telefone" value={empresa.telefone} onChange={onChange} readOnly={readOnly} />
       <Linha>
-        <TextField label="E-mail" type="email" name="email" placeholder="ex.: contato@empresa.com" value={empresa.email} onChange={onChange} readOnly={readOnly} />
+        <TextField label="E-mail" type="email" name="email" value={empresa.email} onChange={onChange} readOnly={readOnly} />
       </Linha>
       <Linha>
-        <TextField label="Endereço" name="endereco" placeholder="Rua, número - bairro, cidade/UF" value={empresa.endereco} onChange={onChange} readOnly={readOnly} />
+        <TextField label="Endereço" name="endereco" value={empresa.endereco} onChange={onChange} readOnly={readOnly} />
       </Linha>
       {readOnly && empresa.dataCadastro && <TextField label="Data de cadastro" name="dataCadastro" value={formatarData(empresa.dataCadastro)} readOnly />}
     </>

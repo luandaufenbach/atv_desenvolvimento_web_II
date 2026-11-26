@@ -26,7 +26,7 @@ export default function CreateEmpresa() {
   const handleCreateEmpresa = async () => {
     try {
       const response = await Axios.post(API_URL, empresa);
-      setMensagem({ message: `Empresa "${response.data.nome}" cadastrada com sucesso!`, status: 'ok' });
+      setMensagem({ message: `Empresa "${response.data.nome}" cadastrada com sucesso.`, status: 'ok' });
       setEmpresa(VAZIA);
     } catch (error) {
       console.log('Erro ao criar a empresa:', error);
@@ -37,12 +37,10 @@ export default function CreateEmpresa() {
   return (
     <AdminLayout titulo="Nova empresa" ativo="empresas">
       <FormLayout
-        titulo="Dados da empresa"
-        icone="apartment"
         voltar="/admin/empresas"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleCreateEmpresa}>
+          <Button caps onClick={handleCreateEmpresa}>
             Salvar
           </Button>
         }

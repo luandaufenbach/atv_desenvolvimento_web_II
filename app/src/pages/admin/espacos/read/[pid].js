@@ -37,15 +37,14 @@ export default function ReadEspaco() {
     <AdminLayout titulo="Detalhes do espaço" ativo="espacos">
       <FormLayout
         titulo={espaco.nome || 'Espaço'}
-        icone="meeting_room"
         voltar="/admin/espacos"
         mensagem={mensagem}
         acoes={
           <>
-            <Button variant="secondary" icon="edit" href={`/admin/espacos/update/${pid}`}>
+            <Button variant="secondary" href={`/admin/espacos/update/${pid}`}>
               Editar
             </Button>
-            <Button variant="subtle" icon="event_available" href={`/admin/disponibilidades?espaco=${pid}`}>
+            <Button variant="subtle" href={`/admin/disponibilidades?espaco=${pid}`}>
               Disponibilidades
             </Button>
           </>

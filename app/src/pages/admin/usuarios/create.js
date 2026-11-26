@@ -26,7 +26,7 @@ export default function CreateUsuario() {
   const handleCreateUsuario = async () => {
     try {
       const response = await Axios.post(API_URL, usuario);
-      setMensagem({ message: `Usuário "${response.data.nome}" cadastrado com sucesso!`, status: 'ok' });
+      setMensagem({ message: `Usuário "${response.data.nome}" cadastrado com sucesso.`, status: 'ok' });
       setUsuario(VAZIO);
     } catch (error) {
       console.log('Erro ao criar o usuário:', error);
@@ -37,12 +37,10 @@ export default function CreateUsuario() {
   return (
     <AdminLayout titulo="Novo usuário" ativo="usuarios">
       <FormLayout
-        titulo="Dados do usuário"
-        icone="person"
         voltar="/admin/usuarios"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleCreateUsuario}>
+          <Button caps onClick={handleCreateUsuario}>
             Salvar
           </Button>
         }

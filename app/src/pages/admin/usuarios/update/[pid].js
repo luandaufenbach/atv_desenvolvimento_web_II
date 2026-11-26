@@ -56,7 +56,7 @@ export default function UpdateUsuario() {
       const sessao = obterSessao();
       if (sessao && sessao._id === response.data._id) salvarSessao(response.data);
 
-      setMensagem({ message: 'Usuário alterado com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Usuário alterado com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao alterar o usuário:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao alterar o usuário!'), status: 'error' });
@@ -66,12 +66,10 @@ export default function UpdateUsuario() {
   return (
     <AdminLayout titulo="Editar usuário" ativo="usuarios">
       <FormLayout
-        titulo="Dados do usuário"
-        icone="person"
         voltar="/admin/usuarios"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleUpdateUsuario} disabled={!carregado}>
+          <Button caps onClick={handleUpdateUsuario} disabled={!carregado}>
             Salvar
           </Button>
         }

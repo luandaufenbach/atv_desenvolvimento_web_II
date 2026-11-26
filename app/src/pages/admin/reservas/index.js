@@ -85,13 +85,13 @@ export default function Reservas() {
 
   const colunas = [
     { key: 'data', label: 'Data', render: (r) => formatarData(r.data) },
-    { key: 'horario', label: 'Horário', mono: true, render: (r) => `${r.horaInicio} – ${r.horaFim}` },
-    { key: 'espaco', label: 'Espaço', render: (r) => (espacos[r.espacoId] ? espacos[r.espacoId].nome : '—') },
-    { key: 'usuario', label: 'Usuário', render: (r) => (usuarios[r.usuarioId] ? usuarios[r.usuarioId].nome : '—') },
+    { key: 'horario', label: 'Horário', mono: true, render: (r) => `${r.horaInicio} - ${r.horaFim}` },
+    { key: 'espaco', label: 'Espaço', render: (r) => (espacos[r.espacoId] ? espacos[r.espacoId].nome : '-') },
+    { key: 'usuario', label: 'Usuário', render: (r) => (usuarios[r.usuarioId] ? usuarios[r.usuarioId].nome : '-') },
     {
       key: 'empresa',
       label: 'Empresa',
-      render: (r) => (r.empresaId ? (empresas[r.empresaId] ? empresas[r.empresaId].nome : '—') : <span style={{ color: 'var(--text-muted)' }}>Externa</span>),
+      render: (r) => (r.empresaId ? (empresas[r.empresaId] ? empresas[r.empresaId].nome : '-') : <span style={{ color: 'var(--text-muted)' }}>Externa</span>),
     },
     { key: 'status', label: 'Situação', render: (r) => <BadgeStatus status={r.status} /> },
     { key: 'acoes', label: 'Ações', align: 'right', render: (r) => <RegistroAction base="/admin/reservas" pid={r._id} /> },

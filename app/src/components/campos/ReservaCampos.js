@@ -1,10 +1,9 @@
 import Field from '@/components/ui/Field';
 import { Linha } from '@/components/FormLayout';
 import Badge from '@/components/ui/Badge';
-import Icon from '@/components/ui/Icon';
 import Select from '@/components/ui/Select';
 import TextField from '@/components/ui/TextField';
-import { DIAS_SEMANA, formatarData, hoje } from '@/services/formatos';
+import { DIAS_SEMANA, formatarData, hoje, pessoas } from '@/services/formatos';
 
 const OPCOES_STATUS = [
   { value: 'CONFIRMADA', label: 'Confirmada' },
@@ -12,51 +11,23 @@ const OPCOES_STATUS = [
 ];
 
 export function BadgeStatus({ status }) {
-  if (status === 'CONFIRMADA') return <Badge tone="success" icon="check_circle">Confirmada</Badge>;
-  if (status === 'CANCELADA') return <Badge tone="error" icon="cancel">Cancelada</Badge>;
+  if (status === 'CONFIRMADA') return <Badge tone="success">Confirmada</Badge>;
+  if (status === 'CANCELADA') return <Badge tone="error">Cancelada</Badge>;
   return null;
 }
 
-// Mostra os horários em que o espaço abre no dia da semana da data escolhida
+// Mostra o horário do espaço no dia da semana da data escolhida
 function HorariosDoDia({ reserva, disponibilidades }) {
   if (!reserva.espacoId || !reserva.data) return null;
 
   const dia = new Date(`${reserva.data}T00:00:00`).getDay();
+  const nomeDia = DIAS_SEMANA[dia].toLowerCase();
   const doDia = disponibilidades.filter((d) => d.espacoId === reserva.espacoId && d.diaSemana === dia);
 
-  return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 10,
-        alignItems: 'flex-start',
-        padding: '12px 14px',
-        background: 'var(--surface-sunken)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 'var(--radius-md)',
-        font: '400 13px/18px var(--font-sans)',
-        color: 'var(--text-secondary)',
-      }}
-    >
-      <Icon name="schedule" size={18} color="var(--text-gold)" />
-      {doDia.length === 0 ? (
-        <span>O espaço não abre {DIAS_SEMANA[dia].toLowerCase()}. Escolha outra data.</span>
-      ) : (
-        <span>
-          Horários deste espaço ({DIAS_SEMANA[dia].toLowerCase()}):{' '}
-          {doDia.map((d, i) => (
-            <span key={d._id}>
-              {i > 0 && ', '}
-              <strong style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-                {d.horaInicio}–{d.horaFim}
-              </strong>
-              {!d.permiteExterno && ' (só empresas)'}
-            </span>
-          ))}
-        </span>
-      )}
-    </div>
-  );
+  const horarios = doDia.map((d) => `${d.horaInicio} às ${d.horaFim}${d.permiteExterno ? '' : ' (só empresas)'}`).join(', ');
+  const texto = doDia.length === 0 ? `Sem horário cadastrado para ${nomeDia}.` : `Horário de ${nomeDia}: ${horarios}`;
+
+  return <p style={{ margin: 0, font: '400 13px/18px var(--font-sans)', color: 'var(--text-muted)' }}>{texto}</p>;
 }
 
 /**
@@ -74,7 +45,7 @@ export default function ReservaCampos({ reserva, espacos = [], usuarios = [], em
           label="Espaço"
           name="espacoId"
           placeholder={readOnly ? undefined : 'Selecione o espaço'}
-          options={espacos.map((e) => ({ value: e._id, label: `${e.nome} · até ${e.capacidade} pessoa(s)` }))}
+          options={espacos.map((e) => ({ value: e._id, label: `${e.nome} (${pessoas(e.capacidade)})` }))}
           value={reserva.espacoId}
           onChange={onChange}
           readOnly={readOnly}

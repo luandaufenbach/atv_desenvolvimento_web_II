@@ -13,6 +13,11 @@ export function nomeTipoEspaco(tipo) {
   return t ? t.label : tipo;
 }
 
+// 1 -> "1 pessoa", 10 -> "10 pessoas"
+export function pessoas(n) {
+  return `${n} ${Number(n) === 1 ? 'pessoa' : 'pessoas'}`;
+}
+
 // "2026-10-13" -> "13/10/2026"
 export function formatarData(data) {
   if (!data) return '';

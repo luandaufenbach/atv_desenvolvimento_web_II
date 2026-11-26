@@ -41,7 +41,7 @@ export default function DeleteEspaco() {
     try {
       await Axios.delete(API_URL + pid);
       setExcluido(true);
-      setMensagem({ message: 'Espaço excluído com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Espaço excluído com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao deletar o espaço:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao deletar o espaço!'), status: 'error' });
@@ -52,21 +52,20 @@ export default function DeleteEspaco() {
     <AdminLayout titulo="Excluir espaço" ativo="espacos">
       <FormLayout
         titulo={espaco.nome || 'Espaço'}
-        icone="meeting_room"
         voltar="/admin/espacos"
         mensagem={mensagem}
         aviso={
           !excluido && (
             <Alert
               mensagem={{
-                message: 'Confira os dados. A exclusão não pode ser desfeita. Espaços com disponibilidades ou reservas não podem ser excluídos — se quiser só tirar de uso, edite e marque como inativo.',
+                message: 'Esta ação não pode ser desfeita. Para tirar o espaço de uso sem excluir, marque como inativo.',
                 status: 'info',
               }}
             />
           )
         }
         acoes={
-          <Button variant="danger" caps icon="delete" onClick={handleDeleteEspaco} disabled={!carregado || excluido}>
+          <Button variant="danger" caps onClick={handleDeleteEspaco} disabled={!carregado || excluido}>
             Deletar
           </Button>
         }

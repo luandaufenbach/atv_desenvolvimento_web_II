@@ -43,7 +43,7 @@ export default function CreateReserva() {
   const handleCreateReserva = async () => {
     try {
       await Axios.post(API_URL, { ...reserva, empresaId: reserva.empresaId || null });
-      setMensagem({ message: 'Reserva confirmada com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Reserva confirmada com sucesso.', status: 'ok' });
       setReserva(VAZIA);
     } catch (error) {
       console.log('Erro ao criar a reserva:', error);
@@ -54,12 +54,10 @@ export default function CreateReserva() {
   return (
     <AdminLayout titulo="Nova reserva" ativo="reservas">
       <FormLayout
-        titulo="Dados da reserva"
-        icone="calendar_month"
         voltar="/admin/reservas"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="event_available" onClick={handleCreateReserva}>
+          <Button caps onClick={handleCreateReserva}>
             Reservar
           </Button>
         }

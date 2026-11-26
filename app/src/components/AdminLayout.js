@@ -33,7 +33,7 @@ export default function AdminLayout({ titulo, ativo, acoes, children }) {
   return (
     <>
       <Head>
-        <title>{`${titulo} · Gestão de Espaços`}</title>
+        <title>{`${titulo} | Gestão de Espaços`}</title>
       </Head>
 
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-app)' }}>

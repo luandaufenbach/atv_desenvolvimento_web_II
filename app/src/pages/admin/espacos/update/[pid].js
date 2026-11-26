@@ -52,7 +52,7 @@ export default function UpdateEspaco() {
       const { nome, tipo, capacidade, descricao, ativo } = espaco;
       const response = await Axios.put(API_URL + pid, { nome, tipo, capacidade, descricao, ativo });
       setEspaco(response.data);
-      setMensagem({ message: 'Espaço alterado com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Espaço alterado com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao alterar o espaço:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao alterar o espaço!'), status: 'error' });
@@ -62,12 +62,10 @@ export default function UpdateEspaco() {
   return (
     <AdminLayout titulo="Editar espaço" ativo="espacos">
       <FormLayout
-        titulo="Dados do espaço"
-        icone="meeting_room"
         voltar="/admin/espacos"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleUpdateEspaco} disabled={!carregado}>
+          <Button caps onClick={handleUpdateEspaco} disabled={!carregado}>
             Salvar
           </Button>
         }

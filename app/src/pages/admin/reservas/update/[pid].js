@@ -52,7 +52,7 @@ export default function UpdateReserva() {
       const { espacoId, usuarioId, empresaId, data, horaInicio, horaFim, status } = reserva;
       const response = await Axios.put(API_URL + pid, { espacoId, usuarioId, empresaId: empresaId || null, data, horaInicio, horaFim, status });
       setReserva({ ...response.data, empresaId: response.data.empresaId || '' });
-      setMensagem({ message: 'Reserva alterada com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Reserva alterada com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao alterar a reserva:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao alterar a reserva!'), status: 'error' });
@@ -62,12 +62,10 @@ export default function UpdateReserva() {
   return (
     <AdminLayout titulo="Editar reserva" ativo="reservas">
       <FormLayout
-        titulo="Dados da reserva"
-        icone="calendar_month"
         voltar="/admin/reservas"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleUpdateReserva} disabled={!carregada}>
+          <Button caps onClick={handleUpdateReserva} disabled={!carregada}>
             Salvar
           </Button>
         }

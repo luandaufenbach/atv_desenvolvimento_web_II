@@ -55,7 +55,7 @@ export default function UpdateDisponibilidade() {
       const { espacoId, diaSemana, horaInicio, horaFim, permiteExterno } = disponibilidade;
       const response = await Axios.put(API_URL + pid, { espacoId, diaSemana, horaInicio, horaFim, permiteExterno });
       setDisponibilidade(response.data);
-      setMensagem({ message: 'Disponibilidade alterada com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Disponibilidade alterada com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao alterar a disponibilidade:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao alterar a disponibilidade!'), status: 'error' });
@@ -65,12 +65,10 @@ export default function UpdateDisponibilidade() {
   return (
     <AdminLayout titulo="Editar disponibilidade" ativo="disponibilidades">
       <FormLayout
-        titulo="Dados da disponibilidade"
-        icone="event_available"
         voltar="/admin/disponibilidades"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleUpdateDisponibilidade} disabled={!carregada}>
+          <Button caps onClick={handleUpdateDisponibilidade} disabled={!carregada}>
             Salvar
           </Button>
         }

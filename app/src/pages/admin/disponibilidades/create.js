@@ -46,7 +46,7 @@ export default function CreateDisponibilidade() {
   const handleCreateDisponibilidade = async () => {
     try {
       await Axios.post(API_URL, disponibilidade);
-      setMensagem({ message: 'Disponibilidade cadastrada com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Disponibilidade cadastrada com sucesso.', status: 'ok' });
       setDisponibilidade({ ...VAZIA, espacoId: disponibilidade.espacoId });
     } catch (error) {
       console.log('Erro ao criar a disponibilidade:', error);
@@ -57,12 +57,10 @@ export default function CreateDisponibilidade() {
   return (
     <AdminLayout titulo="Nova disponibilidade" ativo="disponibilidades">
       <FormLayout
-        titulo="Dados da disponibilidade"
-        icone="event_available"
         voltar="/admin/disponibilidades"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleCreateDisponibilidade}>
+          <Button caps onClick={handleCreateDisponibilidade}>
             Salvar
           </Button>
         }

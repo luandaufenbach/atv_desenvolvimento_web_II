@@ -61,7 +61,7 @@ export default function Usuarios() {
       titulo="Usuários"
       ativo="usuarios"
       acoes={
-        <Button caps icon="person_add" href="/admin/usuarios/create">
+        <Button caps icon="add" href="/admin/usuarios/create">
           Novo usuário
         </Button>
       }

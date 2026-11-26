@@ -40,15 +40,14 @@ export default function ReadReserva() {
     <AdminLayout titulo="Detalhes da reserva" ativo="reservas">
       <FormLayout
         titulo="Reserva"
-        icone="calendar_month"
         voltar="/admin/reservas"
         mensagem={mensagem}
         acoes={
           <>
-            <Button variant="secondary" icon="edit" href={`/admin/reservas/update/${pid}`}>
+            <Button variant="secondary" href={`/admin/reservas/update/${pid}`}>
               Editar
             </Button>
-            <Button variant="danger" icon={reserva.status === 'CONFIRMADA' ? 'event_busy' : 'delete'} href={`/admin/reservas/delete/${pid}`}>
+            <Button variant="danger" href={`/admin/reservas/delete/${pid}`}>
               {reserva.status === 'CONFIRMADA' ? 'Cancelar' : 'Excluir'}
             </Button>
           </>

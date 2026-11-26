@@ -39,11 +39,10 @@ export default function ReadDisponibilidade() {
     <AdminLayout titulo="Detalhes da disponibilidade" ativo="disponibilidades">
       <FormLayout
         titulo="Disponibilidade"
-        icone="event_available"
         voltar="/admin/disponibilidades"
         mensagem={mensagem}
         acoes={
-          <Button variant="secondary" icon="edit" href={`/admin/disponibilidades/update/${pid}`}>
+          <Button variant="secondary" href={`/admin/disponibilidades/update/${pid}`}>
             Editar
           </Button>
         }

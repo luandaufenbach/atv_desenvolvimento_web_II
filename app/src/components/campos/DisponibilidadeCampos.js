@@ -41,12 +41,12 @@ export default function DisponibilidadeCampos({ disponibilidade, espacos = [], o
       <TextField label="Abre às" type="time" name="horaInicio" value={disponibilidade.horaInicio} onChange={onChange} readOnly={readOnly} />
       <TextField label="Fecha às" type="time" name="horaFim" value={disponibilidade.horaFim} onChange={onChange} readOnly={readOnly} />
       <Linha>
-        <Field label="Reservas externas" hint={readOnly ? undefined : 'Desligado: só reservas vinculadas a uma empresa são aceitas neste horário.'}>
+        <Field label="Reservas externas">
           <Switch
             checked={!!disponibilidade.permiteExterno}
             onChange={onChangeExterno}
             disabled={readOnly}
-            label={disponibilidade.permiteExterno ? 'Permite reservas sem empresa' : 'Somente reservas de empresas'}
+            label={disponibilidade.permiteExterno ? 'Sim' : 'Não, só com empresa'}
           />
         </Field>
       </Linha>

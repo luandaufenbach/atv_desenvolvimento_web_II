@@ -37,11 +37,10 @@ export default function ReadEmpresa() {
     <AdminLayout titulo="Detalhes da empresa" ativo="empresas">
       <FormLayout
         titulo={empresa.nome || 'Empresa'}
-        icone="apartment"
         voltar="/admin/empresas"
         mensagem={mensagem}
         acoes={
-          <Button variant="secondary" icon="edit" href={`/admin/empresas/update/${pid}`}>
+          <Button variant="secondary" href={`/admin/empresas/update/${pid}`}>
             Editar
           </Button>
         }

@@ -9,7 +9,7 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import DataTable from '@/components/ui/DataTable';
 import { API, mensagemDeErro } from '@/services/api';
-import { nomeTipoEspaco } from '@/services/formatos';
+import { nomeTipoEspaco, pessoas } from '@/services/formatos';
 
 export default function Espacos() {
   const API_URL = `${API}/espacos`;
@@ -38,7 +38,7 @@ export default function Espacos() {
   const colunas = [
     { key: 'nome', label: 'Nome' },
     { key: 'tipo', label: 'Tipo', render: (e) => nomeTipoEspaco(e.tipo) },
-    { key: 'capacidade', label: 'Capacidade', render: (e) => `${e.capacidade} pessoa(s)` },
+    { key: 'capacidade', label: 'Capacidade', render: (e) => pessoas(e.capacidade) },
     {
       key: 'ativo',
       label: 'Situação',

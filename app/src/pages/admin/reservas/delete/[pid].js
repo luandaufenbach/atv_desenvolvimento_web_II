@@ -48,7 +48,7 @@ export default function DeleteReserva() {
     try {
       const response = await Axios.put(`${API_URL}${pid}/cancelar`);
       setReserva(response.data);
-      setMensagem({ message: 'Reserva cancelada. Agora ela pode ser excluída.', status: 'ok' });
+      setMensagem({ message: 'Reserva cancelada.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao cancelar a reserva:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao cancelar a reserva!'), status: 'error' });
@@ -59,7 +59,7 @@ export default function DeleteReserva() {
     try {
       await Axios.delete(API_URL + pid);
       setExcluida(true);
-      setMensagem({ message: 'Reserva excluída com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Reserva excluída com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao deletar a reserva:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao deletar a reserva!'), status: 'error' });
@@ -70,26 +70,25 @@ export default function DeleteReserva() {
 
   let aviso = null;
   if (!excluida && confirmada) {
-    aviso = <Alert mensagem={{ message: 'Esta reserva está confirmada. Primeiro cancele a reserva; depois de cancelada, ela poderá ser excluída.', status: 'info' }} />;
+    aviso = <Alert mensagem={{ message: 'Para excluir, primeiro cancele a reserva.', status: 'info' }} />;
   } else if (!excluida && reserva.status === 'CANCELADA') {
-    aviso = <Alert mensagem={{ message: 'Reserva cancelada. Confira os dados: a exclusão não pode ser desfeita.', status: 'info' }} />;
+    aviso = <Alert mensagem={{ message: 'Esta ação não pode ser desfeita.', status: 'info' }} />;
   }
 
   return (
     <AdminLayout titulo={confirmada ? 'Cancelar reserva' : 'Excluir reserva'} ativo="reservas">
       <FormLayout
         titulo="Reserva"
-        icone="calendar_month"
         voltar="/admin/reservas"
         mensagem={mensagem}
         aviso={aviso}
         acoes={
           confirmada ? (
-            <Button variant="danger" caps icon="event_busy" onClick={handleCancelReserva} disabled={!carregada}>
+            <Button variant="danger" caps onClick={handleCancelReserva} disabled={!carregada}>
               Cancelar reserva
             </Button>
           ) : (
-            <Button variant="danger" caps icon="delete" onClick={handleDeleteReserva} disabled={!carregada || excluida}>
+            <Button variant="danger" caps onClick={handleDeleteReserva} disabled={!carregada || excluida}>
               Deletar
             </Button>
           )

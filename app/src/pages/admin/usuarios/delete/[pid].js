@@ -49,7 +49,7 @@ export default function DeleteUsuario() {
       // o header informa à API quem está logado (ninguém pode excluir a si mesmo)
       await Axios.delete(API_URL + pid, { headers: { 'x-usuario-id': logadoId || '' } });
       setExcluido(true);
-      setMensagem({ message: 'Usuário excluído com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Usuário excluído com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao deletar o usuário:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao deletar o usuário!'), status: 'error' });
@@ -58,12 +58,12 @@ export default function DeleteUsuario() {
 
   let aviso = null;
   if (ehVoceMesmo) {
-    aviso = <Alert mensagem={{ message: 'Este é o seu usuário. Você não pode excluir a si mesmo.', status: 'error' }} />;
+    aviso = <Alert mensagem={{ message: 'Você não pode excluir o próprio usuário.', status: 'error' }} />;
   } else if (!excluido) {
     aviso = (
       <Alert
         mensagem={{
-          message: 'Confira os dados. A exclusão não pode ser desfeita. Usuários com reservas (mesmo canceladas) não podem ser excluídos: cancele e exclua as reservas antes.',
+          message: 'Esta ação não pode ser desfeita.',
           status: 'info',
         }}
       />
@@ -74,12 +74,11 @@ export default function DeleteUsuario() {
     <AdminLayout titulo="Excluir usuário" ativo="usuarios">
       <FormLayout
         titulo={usuario.nome || 'Usuário'}
-        icone="person"
         voltar="/admin/usuarios"
         mensagem={mensagem}
         aviso={aviso}
         acoes={
-          <Button variant="danger" caps icon="delete" onClick={handleDeleteUsuario} disabled={!carregado || excluido || ehVoceMesmo}>
+          <Button variant="danger" caps onClick={handleDeleteUsuario} disabled={!carregado || excluido || ehVoceMesmo}>
             Deletar
           </Button>
         }

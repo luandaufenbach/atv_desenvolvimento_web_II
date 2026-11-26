@@ -48,7 +48,7 @@ export default function UpdateEmpresa() {
       const { nome, cnpj, email, telefone, endereco } = empresa;
       const response = await Axios.put(API_URL + pid, { nome, cnpj, email, telefone, endereco });
       setEmpresa(response.data);
-      setMensagem({ message: 'Empresa alterada com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Empresa alterada com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao alterar a empresa:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao alterar a empresa!'), status: 'error' });
@@ -58,12 +58,10 @@ export default function UpdateEmpresa() {
   return (
     <AdminLayout titulo="Editar empresa" ativo="empresas">
       <FormLayout
-        titulo="Dados da empresa"
-        icone="apartment"
         voltar="/admin/empresas"
         mensagem={mensagem}
         acoes={
-          <Button caps icon="save" onClick={handleUpdateEmpresa} disabled={!carregada}>
+          <Button caps onClick={handleUpdateEmpresa} disabled={!carregada}>
             Salvar
           </Button>
         }

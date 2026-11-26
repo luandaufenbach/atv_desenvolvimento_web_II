@@ -11,15 +11,15 @@ export default function EspacoCampos({ espaco, onChange, onChangeAtivo, readOnly
   return (
     <>
       <Linha>
-        <TextField label="Nome" name="nome" placeholder="ex.: Sala de Reunião 01" value={espaco.nome} onChange={onChange} readOnly={readOnly} />
+        <TextField label="Nome" name="nome" value={espaco.nome} onChange={onChange} readOnly={readOnly} />
       </Linha>
       <Select label="Tipo" name="tipo" placeholder={readOnly ? undefined : 'Selecione o tipo'} options={TIPOS_ESPACO} value={espaco.tipo} onChange={onChange} readOnly={readOnly} />
-      <TextField label="Capacidade (pessoas)" type="number" min="1" name="capacidade" placeholder="ex.: 10" value={espaco.capacidade} onChange={onChange} readOnly={readOnly} />
+      <TextField label="Capacidade" type="number" min="1" name="capacidade" value={espaco.capacidade} onChange={onChange} readOnly={readOnly} />
       <Linha>
-        <Textarea label="Descrição" name="descricao" rows={3} placeholder="Recursos, equipamentos, observações..." value={espaco.descricao} onChange={onChange} readOnly={readOnly} />
+        <Textarea label="Descrição" name="descricao" rows={3} value={espaco.descricao} onChange={onChange} readOnly={readOnly} />
       </Linha>
       <Linha>
-        <Field label="Situação" hint={readOnly ? undefined : 'Espaço inativo não recebe novas reservas nem disponibilidades.'}>
+        <Field label="Situação">
           <Switch checked={!!espaco.ativo} onChange={onChangeAtivo} disabled={readOnly} label={espaco.ativo ? 'Ativo' : 'Inativo'} />
         </Field>
       </Linha>

@@ -68,9 +68,9 @@ export default function Disponibilidades() {
   const espacosPorId = mapaPorId(espacos);
 
   const colunas = [
-    { key: 'espaco', label: 'Espaço', render: (d) => (espacosPorId[d.espacoId] ? espacosPorId[d.espacoId].nome : '—') },
+    { key: 'espaco', label: 'Espaço', render: (d) => (espacosPorId[d.espacoId] ? espacosPorId[d.espacoId].nome : '-') },
     { key: 'diaSemana', label: 'Dia', render: (d) => DIAS_SEMANA[d.diaSemana] },
-    { key: 'horario', label: 'Horário', mono: true, render: (d) => `${d.horaInicio} – ${d.horaFim}` },
+    { key: 'horario', label: 'Horário', mono: true, render: (d) => `${d.horaInicio} - ${d.horaFim}` },
     {
       key: 'permiteExterno',
       label: 'Reservas externas',

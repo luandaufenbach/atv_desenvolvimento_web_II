@@ -41,7 +41,7 @@ export default function DeleteEmpresa() {
     try {
       await Axios.delete(API_URL + pid);
       setExcluida(true);
-      setMensagem({ message: 'Empresa excluída com sucesso!', status: 'ok' });
+      setMensagem({ message: 'Empresa excluída com sucesso.', status: 'ok' });
     } catch (error) {
       console.log('Erro ao deletar a empresa:', error);
       setMensagem({ message: mensagemDeErro(error, 'Erro ao deletar a empresa!'), status: 'error' });
@@ -52,16 +52,15 @@ export default function DeleteEmpresa() {
     <AdminLayout titulo="Excluir empresa" ativo="empresas">
       <FormLayout
         titulo={empresa.nome || 'Empresa'}
-        icone="apartment"
         voltar="/admin/empresas"
         mensagem={mensagem}
         aviso={
           !excluida && (
-            <Alert mensagem={{ message: 'Confira os dados. A exclusão não pode ser desfeita. Empresas vinculadas a reservas não podem ser excluídas.', status: 'info' }} />
+            <Alert mensagem={{ message: 'Esta ação não pode ser desfeita.', status: 'info' }} />
           )
         }
         acoes={
-          <Button variant="danger" caps icon="delete" onClick={handleDeleteEmpresa} disabled={!carregada || excluida}>
+          <Button variant="danger" caps onClick={handleDeleteEmpresa} disabled={!carregada || excluida}>
             Deletar
           </Button>
         }
