@@ -22,7 +22,8 @@ const swaggerSpec = swaggerJsdoc({
       version: '2.0.0',
       description: 'API REST com MongoDB (Mongoose) do projeto Gestão de Espaços',
     },
-    servers: [{ url: `http://localhost:${PORT}/api` }],
+    // caminho relativo: funciona tanto local quanto no servidor publicado
+    servers: [{ url: '/api' }],
   },
   apis: ['./src/routes/*.js'], // onde procurar os comentários @swagger
 });
