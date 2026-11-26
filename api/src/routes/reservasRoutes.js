@@ -1,52 +1,30 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+
+const Reserva = require('../models/Reserva');
+const Espaco = require('../models/Espaco');
+const Usuario = require('../models/Usuario');
+const Empresa = require('../models/Empresa');
+const Disponibilidade = require('../models/Disponibilidade');
+const {
+  idValido,
+  horaValida,
+  dataValida,
+  hoje,
+  diaDaSemana,
+} = require('../utils/validacoes');
 
 const router = express.Router();
 
-const caminho = path.join(__dirname, '../db/reservas.json');
-const caminhoEspacos = path.join(__dirname, '../db/espacos.json');
-const caminhoUsuarios = path.join(__dirname, '../db/usuarios.json');
-const caminhoEmpresas = path.join(__dirname, '../db/empresas.json');
-const caminhoDisponibilidades = path.join(__dirname, '../db/disponibilidades.json');
+const ORDEM = { data: 1, horaInicio: 1 };
 
-const STATUS_VALIDOS = ['CONFIRMADA', 'CANCELADA'];
-
-// le qualquer arquivo JSON da pasta db (usado para consultar as outras entidades)
-function lerJson(arquivo) {
-  return JSON.parse(fs.readFileSync(arquivo, 'utf-8'));
+// Hora atual no formato HH:MM
+function horaAgora() {
+  return new Date().toTimeString().slice(0, 5);
 }
 
-// le o arquivo JSON e devolve o array de reservas
-function lerReservas() {
-  return lerJson(caminho);
-}
-
-// grava o array de reservas no arquivo JSON (indentado com 2 espacos)
-function salvarReservas(reservas) {
-  fs.writeFileSync(caminho, JSON.stringify(reservas, null, 2));
-}
-
-// Valida o formato "HH:MM"
-function horaValida(hora) {
-  return typeof hora === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(hora);
-}
-
-// Valida "AAAA-MM-DD" e se a data realmente existe (ex.: rejeita 2026-02-31)
-function dataValida(data) {
-  if (typeof data !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(data)) return false;
-  const d = new Date(`${data}T00:00:00`);
-  return !isNaN(d.getTime()) && d.toLocaleDateString('en-CA') === data;
-}
-
-// Dia da semana (0 = Domingo ... 6 = Sábado), igual ao de disponibilidades
-function diaDaSemana(data) {
-  return new Date(`${data}T00:00:00`).getDay();
-}
-
-// Ordena por data e, no mesmo dia, pelo horário de início
-function ordenarPorDataHora(a, b) {
-  return a.data.localeCompare(b.data) || a.horaInicio.localeCompare(b.horaInicio);
+// Verdadeiro se a reserva começa antes deste momento
+function jaComecou(r) {
+  return r.data < hoje() || (r.data === hoje() && r.horaInicio <= horaAgora());
 }
 
 /**
@@ -54,18 +32,21 @@ function ordenarPorDataHora(a, b) {
  * Retorna { status, mensagem } se houver erro, ou null se estiver tudo certo.
  * idIgnorar: id da própria reserva (usado no PUT para não conflitar consigo mesma).
  */
-function validarReserva(r, idIgnorar = null) {
-  const espaco = lerJson(caminhoEspacos).find((e) => e.id === r.espacoId);
-  if (!espaco) return { status: 404, mensagem: 'Espaço não encontrado' };
-  if (!espaco.ativo) {
-    return { status: 400, mensagem: 'Não é possível reservar um espaço inativo' };
+async function validarReserva(r, idIgnorar = null) {
+  if (!idValido(String(r.espacoId))) return { status: 404, mensagem: 'Espaço não encontrado' };
+  if (!idValido(String(r.usuarioId))) return { status: 404, mensagem: 'Usuário não encontrado' };
+  if (r.empresaId !== null && !idValido(String(r.empresaId))) {
+    return { status: 404, mensagem: 'Empresa não encontrada' };
   }
 
-  if (!lerJson(caminhoUsuarios).some((u) => u.id === r.usuarioId)) {
+  const espaco = await Espaco.findById(r.espacoId);
+  if (!espaco) return { status: 404, mensagem: 'Espaço não encontrado' };
+
+  if (!(await Usuario.exists({ _id: r.usuarioId }))) {
     return { status: 404, mensagem: 'Usuário não encontrado' };
   }
 
-  if (r.empresaId !== null && !lerJson(caminhoEmpresas).some((e) => e.id === r.empresaId)) {
+  if (r.empresaId !== null && !(await Empresa.exists({ _id: r.empresaId }))) {
     return { status: 404, mensagem: 'Empresa não encontrada' };
   }
 
@@ -81,48 +62,50 @@ function validarReserva(r, idIgnorar = null) {
     return { status: 400, mensagem: 'horaInicio deve ser anterior a horaFim' };
   }
 
-  if (!STATUS_VALIDOS.includes(r.status)) {
+  if (!Reserva.STATUS.includes(r.status)) {
     return { status: 400, mensagem: 'status inválido. Use CONFIRMADA ou CANCELADA' };
   }
 
   // Reserva cancelada não ocupa o espaço, então não precisa das regras abaixo
   if (r.status === 'CANCELADA') return null;
 
+  if (!espaco.ativo) {
+    return { status: 400, mensagem: 'Não é possível reservar um espaço inativo' };
+  }
+
+  if (jaComecou(r)) {
+    return { status: 400, mensagem: 'Não é possível confirmar uma reserva para data/horário que já passou' };
+  }
+
   // A reserva precisa caber dentro de alguma disponibilidade do espaço naquele dia da semana
-  const dia = diaDaSemana(r.data);
-  const disponibilidade = lerJson(caminhoDisponibilidades).find(
-    (d) =>
-      d.espacoId === r.espacoId &&
-      d.diaSemana === dia &&
-      r.horaInicio >= d.horaInicio &&
-      r.horaFim <= d.horaFim
-  );
+  const disponibilidade = await Disponibilidade.findOne({
+    espacoId: r.espacoId,
+    diaSemana: diaDaSemana(r.data),
+    horaInicio: { $lte: r.horaInicio },
+    horaFim: { $gte: r.horaFim },
+  });
 
   if (!disponibilidade) {
-    return {
-      status: 400,
-      mensagem: 'O espaço não tem disponibilidade para esta data e horário',
-    };
+    return { status: 400, mensagem: 'O espaço não tem disponibilidade para esta data e horário' };
   }
 
   // Externo = reserva feita sem empresa vinculada
   if (!disponibilidade.permiteExterno && r.empresaId === null) {
     return {
       status: 403,
-      mensagem: 'Esta disponibilidade não permite reservas externas (informe empresaId)',
+      mensagem: 'Esta disponibilidade não permite reservas externas (informe a empresa)',
     };
   }
 
   // Sem sobreposição com outra reserva confirmada no mesmo espaço e data
-  const conflito = lerReservas().some(
-    (o) =>
-      o.id !== idIgnorar &&
-      o.status === 'CONFIRMADA' &&
-      o.espacoId === r.espacoId &&
-      o.data === r.data &&
-      r.horaInicio < o.horaFim &&
-      r.horaFim > o.horaInicio
-  );
+  const conflito = await Reserva.exists({
+    _id: { $ne: idIgnorar },
+    status: 'CONFIRMADA',
+    espacoId: r.espacoId,
+    data: r.data,
+    horaInicio: { $lt: r.horaFim },
+    horaFim: { $gt: r.horaInicio },
+  });
 
   if (conflito) {
     return { status: 409, mensagem: 'Já existe uma reserva neste espaço que conflita com este horário' };
@@ -142,23 +125,23 @@ function validarReserva(r, idIgnorar = null) {
  *     Reserva:
  *       type: object
  *       properties:
- *         id:
- *           type: integer
- *           example: 1
+ *         _id:
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34cd
  *         espacoId:
- *           type: integer
- *           example: 1
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34aa
  *         usuarioId:
- *           type: integer
- *           example: 1
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34bb
  *         empresaId:
- *           type: integer
+ *           type: string
  *           nullable: true
  *           example: null
  *         data:
  *           type: string
  *           format: date
- *           example: "2026-10-13"
+ *           example: "2026-12-14"
  *         horaInicio:
  *           type: string
  *           example: "09:00"
@@ -172,7 +155,7 @@ function validarReserva(r, idIgnorar = null) {
  *         dataCadastro:
  *           type: string
  *           format: date
- *           example: "2026-10-04"
+ *           example: "2026-11-26"
  *     ReservaInput:
  *       type: object
  *       required:
@@ -183,20 +166,20 @@ function validarReserva(r, idIgnorar = null) {
  *         - horaFim
  *       properties:
  *         espacoId:
- *           type: integer
- *           example: 1
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34aa
  *         usuarioId:
- *           type: integer
- *           example: 1
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34bb
  *         empresaId:
- *           type: integer
+ *           type: string
  *           nullable: true
  *           description: Opcional. Sem empresa a reserva é considerada externa
  *           example: null
  *         data:
  *           type: string
  *           format: date
- *           example: "2026-10-13"
+ *           example: "2026-12-14"
  *         horaInicio:
  *           type: string
  *           example: "09:00"
@@ -225,10 +208,8 @@ function validarReserva(r, idIgnorar = null) {
  *               items:
  *                 $ref: '#/components/schemas/Reserva'
  */
-router.get('/', (req, res) => {
-  const reservas = lerReservas().sort(ordenarPorDataHora);
-
-  res.json(reservas);
+router.get('/', async (req, res) => {
+  res.json(await Reserva.find().sort(ORDEM));
 });
 
 /**
@@ -245,7 +226,7 @@ router.get('/', (req, res) => {
  *         schema:
  *           type: string
  *           format: date
- *         example: "2026-10-13"
+ *         example: "2026-12-14"
  *     responses:
  *       200:
  *         description: Reservas da data, ordenadas por horário (pode ser uma lista vazia)
@@ -255,13 +236,19 @@ router.get('/', (req, res) => {
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Reserva'
+ *       400:
+ *         description: Data inválida
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.get('/data/:data', (req, res) => {
-  const reservas = lerReservas()
-    .filter((r) => r.data === req.params.data)
-    .sort(ordenarPorDataHora);
+router.get('/data/:data', async (req, res) => {
+  if (!dataValida(req.params.data)) {
+    return res.status(400).json({ mensagem: 'data deve estar no formato AAAA-MM-DD e ser válida' });
+  }
 
-  res.json(reservas);
+  res.json(await Reserva.find({ data: req.params.data }).sort(ORDEM));
 });
 
 /**
@@ -275,8 +262,7 @@ router.get('/data/:data', (req, res) => {
  *         name: espacoId
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Reservas do espaço (pode ser uma lista vazia)
@@ -293,18 +279,14 @@ router.get('/data/:data', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.get('/espaco/:espacoId', (req, res) => {
-  const espacoId = Number(req.params.espacoId);
+router.get('/espaco/:espacoId', async (req, res) => {
+  const { espacoId } = req.params;
 
-  if (!lerJson(caminhoEspacos).some((e) => e.id === espacoId)) {
+  if (!idValido(espacoId) || !(await Espaco.exists({ _id: espacoId }))) {
     return res.status(404).json({ mensagem: 'Espaço não encontrado' });
   }
 
-  const reservas = lerReservas()
-    .filter((r) => r.espacoId === espacoId)
-    .sort(ordenarPorDataHora);
-
-  res.json(reservas);
+  res.json(await Reserva.find({ espacoId }).sort(ORDEM));
 });
 
 /**
@@ -318,8 +300,7 @@ router.get('/espaco/:espacoId', (req, res) => {
  *         name: usuarioId
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Reservas do usuário (pode ser uma lista vazia)
@@ -336,18 +317,14 @@ router.get('/espaco/:espacoId', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.get('/usuario/:usuarioId', (req, res) => {
-  const usuarioId = Number(req.params.usuarioId);
+router.get('/usuario/:usuarioId', async (req, res) => {
+  const { usuarioId } = req.params;
 
-  if (!lerJson(caminhoUsuarios).some((u) => u.id === usuarioId)) {
+  if (!idValido(usuarioId) || !(await Usuario.exists({ _id: usuarioId }))) {
     return res.status(404).json({ mensagem: 'Usuário não encontrado' });
   }
 
-  const reservas = lerReservas()
-    .filter((r) => r.usuarioId === usuarioId)
-    .sort(ordenarPorDataHora);
-
-  res.json(reservas);
+  res.json(await Reserva.find({ usuarioId }).sort(ORDEM));
 });
 
 /**
@@ -361,8 +338,7 @@ router.get('/usuario/:usuarioId', (req, res) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Reserva encontrada
@@ -377,9 +353,8 @@ router.get('/usuario/:usuarioId', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.get('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const reserva = lerReservas().find((r) => r.id === id);
+router.get('/:id', async (req, res) => {
+  const reserva = idValido(req.params.id) ? await Reserva.findById(req.params.id) : null;
 
   if (!reserva) {
     return res.status(404).json({ mensagem: 'Reserva não encontrada' });
@@ -392,7 +367,11 @@ router.get('/:id', (req, res) => {
  * @swagger
  * /reservas:
  *   post:
- *     summary: Cria uma nova reserva
+ *     summary: Cria uma reserva
+ *     description: |
+ *       Regras: espaço ativo; usuário (e empresa, se informada) existentes; data/horário ainda
+ *       não passados; dentro de uma disponibilidade do espaço; reserva externa só onde
+ *       permiteExterno; sem conflito com outra reserva confirmada.
  *     tags: [Reservas]
  *     requestBody:
  *       required: true
@@ -408,7 +387,7 @@ router.get('/:id', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Reserva'
  *       400:
- *         description: Campos inválidos, espaço inativo ou fora da disponibilidade
+ *         description: Campos inválidos, espaço inativo, data passada ou fora da disponibilidade
  *         content:
  *           application/json:
  *             schema:
@@ -432,45 +411,85 @@ router.get('/:id', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { espacoId, usuarioId, empresaId, data, horaInicio, horaFim, status } = req.body || {};
 
-  if (espacoId === undefined || usuarioId === undefined || !data || !horaInicio || !horaFim) {
+  if (!espacoId || !usuarioId || !data || !horaInicio || !horaFim) {
     return res.status(400).json({
       mensagem: 'espacoId, usuarioId, data, horaInicio e horaFim são obrigatórios',
     });
   }
 
-  const novaReserva = {
-    espacoId: Number(espacoId),
-    usuarioId: Number(usuarioId),
-    empresaId: empresaId === undefined || empresaId === null ? null : Number(empresaId),
+  const nova = {
+    espacoId: String(espacoId),
+    usuarioId: String(usuarioId),
+    empresaId: empresaId ? String(empresaId) : null,
     data,
     horaInicio,
     horaFim,
-    status: status !== undefined ? status : 'CONFIRMADA',
+    status: status || 'CONFIRMADA',
   };
 
-  const erro = validarReserva(novaReserva);
+  // Uma reserva nova sempre nasce confirmada
+  if (nova.status !== 'CONFIRMADA') {
+    return res.status(400).json({ mensagem: 'Uma nova reserva deve ser criada como CONFIRMADA' });
+  }
+
+  const erro = await validarReserva(nova);
   if (erro) {
     return res.status(erro.status).json({ mensagem: erro.mensagem });
   }
 
-  const reservas = lerReservas();
-
-  // Próximo id = maior id existente + 1
-  const novoId = reservas.reduce((maior, r) => Math.max(maior, r.id), 0) + 1;
-
-  const reserva = {
-    id: novoId,
-    ...novaReserva,
-    dataCadastro: new Date().toLocaleDateString('en-CA'), // AAAA-MM-DD no fuso local
-  };
-
-  reservas.push(reserva);
-  salvarReservas(reservas);
-
+  const reserva = await Reserva.create({ ...nova, dataCadastro: hoje() });
   res.status(201).json(reserva);
+});
+
+/**
+ * @swagger
+ * /reservas/{id}/cancelar:
+ *   put:
+ *     summary: Cancela uma reserva (passo obrigatório antes de excluir)
+ *     tags: [Reservas]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Reserva cancelada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Reserva'
+ *       404:
+ *         description: Reserva não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Reserva já está cancelada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
+ */
+router.put('/:id/cancelar', async (req, res) => {
+  const reserva = idValido(req.params.id) ? await Reserva.findById(req.params.id) : null;
+
+  if (!reserva) {
+    return res.status(404).json({ mensagem: 'Reserva não encontrada' });
+  }
+
+  if (reserva.status === 'CANCELADA') {
+    return res.status(409).json({ mensagem: 'A reserva já está cancelada' });
+  }
+
+  reserva.status = 'CANCELADA';
+  await reserva.save();
+  res.json(reserva);
 });
 
 /**
@@ -478,14 +497,16 @@ router.post('/', (req, res) => {
  * /reservas/{id}:
  *   put:
  *     summary: Atualiza uma reserva (envie só os campos que quer alterar)
+ *     description: |
+ *       Reservas que já começaram só podem ser canceladas. Reconfirmar uma reserva
+ *       cancelada passa por todas as regras de novo (disponibilidade, conflito etc.).
  *     tags: [Reservas]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -500,7 +521,7 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Reserva'
  *       400:
- *         description: Campos inválidos, espaço inativo ou fora da disponibilidade
+ *         description: Campos inválidos, espaço inativo, data passada ou fora da disponibilidade
  *         content:
  *           application/json:
  *             schema:
@@ -518,45 +539,58 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  *       409:
- *         description: Conflito de horário com outra reserva
+ *         description: Conflito de horário ou reserva já iniciada
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Erro'
  */
-router.put('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const reservas = lerReservas();
-  const indice = reservas.findIndex((r) => r.id === id);
+router.put('/:id', async (req, res) => {
+  const reserva = idValido(req.params.id) ? await Reserva.findById(req.params.id) : null;
 
-  if (indice === -1) {
+  if (!reserva) {
     return res.status(404).json({ mensagem: 'Reserva não encontrada' });
   }
 
   const { espacoId, usuarioId, empresaId, data, horaInicio, horaFim, status } = req.body || {};
 
-  // Mantém os valores antigos para os campos que não vieram no body.
-  // id e dataCadastro não podem ser alterados.
+  // id e dataCadastro não podem ser alterados; campos ausentes mantêm o valor atual
   const atualizada = {
-    ...reservas[indice],
-    ...(espacoId !== undefined && { espacoId: Number(espacoId) }),
-    ...(usuarioId !== undefined && { usuarioId: Number(usuarioId) }),
-    ...(empresaId !== undefined && { empresaId: empresaId === null ? null : Number(empresaId) }),
-    ...(data !== undefined && { data }),
-    ...(horaInicio !== undefined && { horaInicio }),
-    ...(horaFim !== undefined && { horaFim }),
-    ...(status !== undefined && { status }),
+    espacoId: espacoId !== undefined ? String(espacoId) : String(reserva.espacoId),
+    usuarioId: usuarioId !== undefined ? String(usuarioId) : String(reserva.usuarioId),
+    empresaId:
+      empresaId !== undefined
+        ? empresaId
+          ? String(empresaId)
+          : null
+        : reserva.empresaId
+          ? String(reserva.empresaId)
+          : null,
+    data: data !== undefined ? data : reserva.data,
+    horaInicio: horaInicio !== undefined ? horaInicio : reserva.horaInicio,
+    horaFim: horaFim !== undefined ? horaFim : reserva.horaFim,
+    status: status !== undefined ? status : reserva.status,
   };
 
-  const erro = validarReserva(atualizada, id);
+  // Reserva que já começou: só é permitido cancelar
+  if (jaComecou(reserva)) {
+    const mudouAlgoAlemDoStatus = ['espacoId', 'usuarioId', 'empresaId', 'data', 'horaInicio', 'horaFim'].some(
+      (campo) => String(atualizada[campo]) !== String(reserva[campo] ?? null)
+    );
+    const reconfirmando = atualizada.status === 'CONFIRMADA' && reserva.status === 'CANCELADA';
+    if (mudouAlgoAlemDoStatus || reconfirmando) {
+      return res.status(409).json({ mensagem: 'Esta reserva já começou ou passou: só é possível cancelá-la' });
+    }
+  }
+
+  const erro = await validarReserva(atualizada, reserva._id);
   if (erro) {
     return res.status(erro.status).json({ mensagem: erro.mensagem });
   }
 
-  reservas[indice] = atualizada;
-  salvarReservas(reservas);
-
-  res.json(atualizada);
+  reserva.set(atualizada);
+  await reserva.save();
+  res.json(reserva);
 });
 
 /**
@@ -564,14 +598,14 @@ router.put('/:id', (req, res) => {
  * /reservas/{id}:
  *   delete:
  *     summary: Remove uma reserva
+ *     description: Regra — só é possível excluir reservas CANCELADAS (cancele primeiro).
  *     tags: [Reservas]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Reserva removida
@@ -585,18 +619,25 @@ router.put('/:id', (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Reserva ainda confirmada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.delete('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const reservas = lerReservas();
-  const reserva = reservas.find((r) => r.id === id);
+router.delete('/:id', async (req, res) => {
+  const reserva = idValido(req.params.id) ? await Reserva.findById(req.params.id) : null;
 
   if (!reserva) {
     return res.status(404).json({ mensagem: 'Reserva não encontrada' });
   }
 
-  salvarReservas(reservas.filter((r) => r.id !== id));
+  if (reserva.status !== 'CANCELADA') {
+    return res.status(409).json({ mensagem: 'Só é possível excluir reservas canceladas. Cancele a reserva primeiro.' });
+  }
 
+  await reserva.deleteOne();
   res.json(reserva);
 });
 
