@@ -1,12 +1,13 @@
 {
-  "name": "td_01",
+  "name": "api_gestao_espacos",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "seed": "node src/db/seed.js"
   },
   "repository": {
     "type": "git",
@@ -21,7 +22,11 @@
   },
   "homepage": "https://github.com/luandaufenbach/atv_desenvolvimento_web_II#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
     "express": "^5.2.1",
+    "mongoose": "^9.13.1",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1"
   }
