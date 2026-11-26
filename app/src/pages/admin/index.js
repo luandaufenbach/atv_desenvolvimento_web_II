@@ -1,112 +1,72 @@
 import Axios from 'axios';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import AdminLayout from '@/components/AdminLayout';
-import { ITENS_MENU } from '@/components/NavAdmin';
 import Alert from '@/components/ui/Alert';
-import Icon from '@/components/ui/Icon';
+import Button from '@/components/ui/Button';
+import DataTable from '@/components/ui/DataTable';
+import StatCard from '@/components/ui/StatCard';
 import { API, mensagemDeErro } from '@/services/api';
-import { hoje } from '@/services/formatos';
-
-const DESCRICOES = {
-  empresas: 'Empresas que podem fazer reservas internas.',
-  espacos: 'Salas, laboratórios e coworkings disponíveis.',
-  disponibilidades: 'Dias e horários em que cada espaço abre.',
-  reservas: 'Agendamentos dos espaços pelos usuários.',
-  usuarios: 'Pessoas com acesso ao sistema.',
-};
-
-function CartaoCadastro({ item, total }) {
-  const [hover, setHover] = useState(false);
-  return (
-    <Link
-      href={item.href}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        padding: 20,
-        textDecoration: 'none',
-        background: hover ? 'var(--surface-raised)' : 'var(--surface-card)',
-        border: '1px solid ' + (hover ? 'var(--border-strong)' : 'var(--border-default)'),
-        borderRadius: 'var(--radius-xl)',
-        transition: 'background var(--dur-fast) var(--ease-standard), border-color var(--dur-fast)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span
-          style={{
-            width: 44,
-            height: 44,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '50%',
-            background: 'var(--surface-icon)',
-            color: 'var(--gold-100)',
-          }}
-        >
-          <Icon name={item.icon} size={22} />
-        </span>
-        <span style={{ font: '600 28px/34px var(--font-sans)', letterSpacing: '-0.01em', color: 'var(--text-primary)' }}>{total ?? '–'}</span>
-      </div>
-      <div>
-        <div style={{ font: '500 16px/22px var(--font-sans)', color: 'var(--text-primary)' }}>{item.label}</div>
-        <div style={{ font: '400 13px/18px var(--font-sans)', color: 'var(--text-muted)', marginTop: 2 }}>{DESCRICOES[item.id]}</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, font: '700 11px/14px var(--font-sans)', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-gold)' }}>
-        Abrir cadastro <Icon name="arrow_forward" size={16} />
-      </div>
-    </Link>
-  );
-}
+import { carregarListasReserva } from '@/services/carregarListas';
+import { formatarData, hoje, mapaPorId } from '@/services/formatos';
 
 export default function Admin() {
-  const [totais, setTotais] = useState({});
+  const [reservas, setReservas] = useState([]);
+  const [listas, setListas] = useState({ espacos: [], usuarios: [], empresas: [] });
+  const [carregado, setCarregado] = useState(false);
   const [mensagem, setMensagem] = useState({ message: '', status: '' });
 
   useEffect(() => {
-    const getTotais = async () => {
+    const getDados = async () => {
       try {
-        const nomes = ['empresas', 'espacos', 'disponibilidades', 'reservas', 'usuarios'];
-        const respostas = await Promise.all(nomes.map((n) => Axios.get(`${API}/${n}`)));
-        const novo = {};
-        nomes.forEach((n, i) => {
-          novo[n] = respostas[i].data.length;
-        });
-        // reservas confirmadas de hoje em diante
-        novo.proximas = respostas[3].data.filter((r) => r.status === 'CONFIRMADA' && r.data >= hoje()).length;
-        setTotais(novo);
+        const [response, dados] = await Promise.all([Axios.get(`${API}/reservas`), carregarListasReserva()]);
+        setReservas(response.data);
+        setListas(dados);
+        setCarregado(true);
       } catch (error) {
-        console.log('Erro ao buscar os totais:', error);
+        console.log('Erro ao buscar os dados:', error);
         setMensagem({ message: mensagemDeErro(error, 'Erro ao buscar os dados da API!'), status: 'error' });
       }
     };
 
-    getTotais();
+    getDados();
   }, []);
+
+  const confirmadas = reservas.filter((r) => r.status === 'CONFIRMADA');
+  const reservasHoje = confirmadas.filter((r) => r.data === hoje());
+  const proximas = confirmadas.filter((r) => r.data >= hoje());
+
+  const espacos = mapaPorId(listas.espacos);
+  const usuarios = mapaPorId(listas.usuarios);
+
+  const valor = (n) => (carregado ? n : '-');
+
+  const colunas = [
+    { key: 'data', label: 'Data', render: (r) => formatarData(r.data) },
+    { key: 'horario', label: 'Horário', mono: true, render: (r) => `${r.horaInicio} - ${r.horaFim}` },
+    { key: 'espaco', label: 'Espaço', render: (r) => (espacos[r.espacoId] ? espacos[r.espacoId].nome : '-') },
+    { key: 'usuario', label: 'Usuário', render: (r) => (usuarios[r.usuarioId] ? usuarios[r.usuarioId].nome : '-') },
+  ];
 
   return (
     <AdminLayout titulo="Início" ativo="inicio">
-      <p style={{ margin: '0 0 24px', font: '400 14px/20px var(--font-sans)', color: 'var(--text-muted)' }}>
-        Escolha um cadastro para listar, criar, visualizar, editar ou apagar registros.
-        {totais.proximas !== undefined && (
-          <>
-            {' '}Há <strong style={{ color: 'var(--text-gold)' }}>{totais.proximas}</strong> reserva(s) confirmada(s) a partir de hoje.
-          </>
-        )}
-      </p>
-
       <Alert mensagem={mensagem} style={{ marginBottom: 24 }} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 24 }}>
-        {ITENS_MENU.filter((item) => item.id !== 'inicio').map((item) => (
-          <CartaoCadastro key={item.id} item={item} total={totais[item.id]} />
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <StatCard label="Reservas hoje" value={valor(reservasHoje.length)} />
+        <StatCard label="Próximas reservas" value={valor(proximas.length)} />
+        <StatCard label="Espaços ativos" value={valor(listas.espacos.filter((e) => e.ativo).length)} />
+        <StatCard label="Empresas" value={valor(listas.empresas.length)} />
+        <StatCard label="Usuários" value={valor(listas.usuarios.length)} />
       </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <h2 style={{ margin: 0, font: 'var(--type-card-title)', color: 'var(--text-primary)' }}>Próximas reservas</h2>
+        <Button variant="ghost" size="sm" href="/admin/reservas">
+          Ver todas
+        </Button>
+      </div>
+      <DataTable columns={colunas} rows={proximas.slice(0, 8)} vazio="Nenhuma reserva agendada." />
     </AdminLayout>
   );
 }
