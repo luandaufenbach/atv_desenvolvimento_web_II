@@ -1,35 +1,32 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+
+const Espaco = require('../models/Espaco');
+const Disponibilidade = require('../models/Disponibilidade');
+const Reserva = require('../models/Reserva');
+const { idValido, escaparRegex, hoje } = require('../utils/validacoes');
 
 const router = express.Router();
 
-const caminho = path.join(__dirname, '../db/espacos.json');
-
-// le o arquivo JSON e devolve o array de espacos
-function lerEspacos() {
-  const dados = fs.readFileSync(caminho, 'utf-8');
-  return JSON.parse(dados);
-}
-
-function salvarEspacos(espacos) {
-  fs.writeFileSync(caminho, JSON.stringify(espacos, null, 2));
+// Converte capacidade para inteiro positivo (ou NaN se inválida)
+function lerCapacidade(valor) {
+  const numero = Number(valor);
+  return Number.isInteger(numero) && numero > 0 ? numero : NaN;
 }
 
 /**
  * @swagger
  * tags:
  *   name: Espaços
- *   description: Gerenciamento de locais e salas alocáveis
+ *   description: Cadastro de espaços
  *
  * components:
  *   schemas:
  *     Espaco:
  *       type: object
  *       properties:
- *         id:
- *           type: integer
- *           example: 1
+ *         _id:
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34cd
  *         nome:
  *           type: string
  *           example: Sala de Coworking 01
@@ -42,7 +39,7 @@ function salvarEspacos(espacos) {
  *           example: 10
  *         descricao:
  *           type: string
- *           example: Sala compartilhada com mesas individuais.
+ *           example: Sala compartilhada com mesas individuais e internet rápida.
  *         ativo:
  *           type: boolean
  *           example: true
@@ -65,7 +62,7 @@ function salvarEspacos(espacos) {
  *           example: 10
  *         descricao:
  *           type: string
- *           example: Sala compartilhada com mesas individuais.
+ *           example: Sala compartilhada com mesas individuais e internet rápida.
  *         ativo:
  *           type: boolean
  *           example: true
@@ -79,7 +76,7 @@ function salvarEspacos(espacos) {
  *     tags: [Espaços]
  *     responses:
  *       200:
- *         description: Lista de espaços
+ *         description: Lista de espaços ordenada por nome
  *         content:
  *           application/json:
  *             schema:
@@ -87,8 +84,38 @@ function salvarEspacos(espacos) {
  *               items:
  *                 $ref: '#/components/schemas/Espaco'
  */
-router.get('/', (req, res) => {
-  const espacos = lerEspacos().sort((a, b) => a.nome.localeCompare(b.nome));
+router.get('/', async (req, res) => {
+  res.json(await Espaco.find().sort({ nome: 1 }));
+});
+
+/**
+ * @swagger
+ * /espacos/nome/{nome}:
+ *   get:
+ *     summary: Busca espaços pelo nome (parcial, sem diferenciar maiúsculas)
+ *     tags: [Espaços]
+ *     parameters:
+ *       - in: path
+ *         name: nome
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: sala
+ *     responses:
+ *       200:
+ *         description: Espaços encontrados (pode ser uma lista vazia)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Espaco'
+ */
+router.get('/nome/:nome', async (req, res) => {
+  const espacos = await Espaco.find({
+    nome: { $regex: escaparRegex(req.params.nome), $options: 'i' },
+  }).sort({ nome: 1 });
+
   res.json(espacos);
 });
 
@@ -103,8 +130,7 @@ router.get('/', (req, res) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Espaço encontrado
@@ -114,10 +140,13 @@ router.get('/', (req, res) => {
  *               $ref: '#/components/schemas/Espaco'
  *       404:
  *         description: Espaço não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.get('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const espaco = lerEspacos().find((e) => e.id === id);
+router.get('/:id', async (req, res) => {
+  const espaco = idValido(req.params.id) ? await Espaco.findById(req.params.id) : null;
 
   if (!espaco) {
     return res.status(404).json({ mensagem: 'Espaço não encontrado' });
@@ -146,51 +175,52 @@ router.get('/:id', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Espaco'
  *       400:
- *         description: Campos obrigatórios faltando
+ *         description: Campos obrigatórios faltando, tipo ou capacidade inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { nome, tipo, capacidade, descricao, ativo } = req.body || {};
 
-  if (!nome || !tipo || capacidade === undefined) {
+  if (!nome || !tipo || capacidade === undefined || capacidade === '') {
     return res.status(400).json({ mensagem: 'Nome, tipo e capacidade são obrigatórios' });
   }
 
-  const tiposValidos = ['COWORKING', 'LAB', 'MEETING_ROOM'];
-  if (!tiposValidos.includes(tipo)) {
+  if (!Espaco.TIPOS.includes(tipo)) {
     return res.status(400).json({ mensagem: 'Tipo inválido. Use COWORKING, LAB ou MEETING_ROOM' });
   }
 
-  const espacos = lerEspacos();
-  const novoId = espacos.reduce((maior, e) => Math.max(maior, e.id), 0) + 1;
+  const cap = lerCapacidade(capacidade);
+  if (isNaN(cap)) {
+    return res.status(400).json({ mensagem: 'Capacidade deve ser um número inteiro maior que zero' });
+  }
 
-  const novoEspaco = {
-    id: novoId,
+  const espaco = await Espaco.create({
     nome,
     tipo,
-    capacidade: Number(capacidade),
+    capacidade: cap,
     descricao: descricao || '',
-    ativo: ativo !== undefined ? ativo : true,
-  };
+    ativo: ativo === undefined ? true : Boolean(ativo),
+  });
 
-  espacos.push(novoEspaco);
-  salvarEspacos(espacos);
-
-  res.status(201).json(novoEspaco);
+  res.status(201).json(espaco);
 });
 
 /**
  * @swagger
  * /espacos/{id}:
  *   put:
- *     summary: Atualiza um espaço
+ *     summary: Atualiza um espaço (envie só os campos que quer alterar)
+ *     description: Regra — não é possível inativar um espaço com reservas confirmadas a partir de hoje.
  *     tags: [Espaços]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -204,33 +234,71 @@ router.post('/', (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Espaco'
+ *       400:
+ *         description: Tipo ou capacidade inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  *       404:
  *         description: Espaço não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Espaço possui reservas confirmadas futuras e não pode ser inativado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.put('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const espacos = lerEspacos();
-  const indice = espacos.findIndex((e) => e.id === id);
+router.put('/:id', async (req, res) => {
+  const espaco = idValido(req.params.id) ? await Espaco.findById(req.params.id) : null;
 
-  if (indice === -1) {
+  if (!espaco) {
     return res.status(404).json({ mensagem: 'Espaço não encontrado' });
   }
 
   const { nome, tipo, capacidade, descricao, ativo } = req.body || {};
 
-  const atualizado = {
-    ...espacos[indice],
-    ...(nome !== undefined && { nome }),
-    ...(tipo !== undefined && { tipo }),
-    ...(capacidade !== undefined && { capacidade: Number(capacidade) }),
-    ...(descricao !== undefined && { descricao }),
-    ...(ativo !== undefined && { ativo }),
-  };
+  if (nome !== undefined && !String(nome).trim()) {
+    return res.status(400).json({ mensagem: 'Nome não pode ficar vazio' });
+  }
 
-  espacos[indice] = atualizado;
-  salvarEspacos(espacos);
+  if (tipo !== undefined && !Espaco.TIPOS.includes(tipo)) {
+    return res.status(400).json({ mensagem: 'Tipo inválido. Use COWORKING, LAB ou MEETING_ROOM' });
+  }
 
-  res.json(atualizado);
+  if (capacidade !== undefined) {
+    const cap = lerCapacidade(capacidade);
+    if (isNaN(cap)) {
+      return res.status(400).json({ mensagem: 'Capacidade deve ser um número inteiro maior que zero' });
+    }
+    espaco.capacidade = cap;
+  }
+
+  // Inativar só se não houver reservas confirmadas de hoje em diante
+  if (ativo !== undefined && !ativo && espaco.ativo) {
+    const futuras = await Reserva.countDocuments({
+      espacoId: espaco._id,
+      status: 'CONFIRMADA',
+      data: { $gte: hoje() },
+    });
+    if (futuras > 0) {
+      return res.status(409).json({
+        mensagem: `Não é possível inativar: o espaço possui ${futuras} reserva(s) confirmada(s) a partir de hoje. Cancele-as antes.`,
+      });
+    }
+  }
+
+  if (nome !== undefined) espaco.nome = nome;
+  if (tipo !== undefined) espaco.tipo = tipo;
+  if (descricao !== undefined) espaco.descricao = descricao;
+  if (ativo !== undefined) espaco.ativo = Boolean(ativo);
+
+  await espaco.save();
+  res.json(espaco);
 });
 
 /**
@@ -238,14 +306,14 @@ router.put('/:id', (req, res) => {
  * /espacos/{id}:
  *   delete:
  *     summary: Remove um espaço
+ *     description: Regra — não é possível excluir um espaço que tenha disponibilidades ou reservas.
  *     tags: [Espaços]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 3
+ *           type: string
  *     responses:
  *       200:
  *         description: Espaço removido
@@ -255,18 +323,39 @@ router.put('/:id', (req, res) => {
  *               $ref: '#/components/schemas/Espaco'
  *       404:
  *         description: Espaço não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Espaço possui disponibilidades ou reservas
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.delete('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const espacos = lerEspacos();
-  const espaco = espacos.find((e) => e.id === id);
+router.delete('/:id', async (req, res) => {
+  const espaco = idValido(req.params.id) ? await Espaco.findById(req.params.id) : null;
 
   if (!espaco) {
     return res.status(404).json({ mensagem: 'Espaço não encontrado' });
   }
 
-  salvarEspacos(espacos.filter((e) => e.id !== id));
+  const totalReservas = await Reserva.countDocuments({ espacoId: espaco._id });
+  if (totalReservas > 0) {
+    return res.status(409).json({
+      mensagem: `Não é possível excluir: o espaço possui ${totalReservas} reserva(s). Cancele e exclua as reservas antes.`,
+    });
+  }
 
+  const totalDisponibilidades = await Disponibilidade.countDocuments({ espacoId: espaco._id });
+  if (totalDisponibilidades > 0) {
+    return res.status(409).json({
+      mensagem: `Não é possível excluir: o espaço possui ${totalDisponibilidades} disponibilidade(s). Exclua as disponibilidades antes.`,
+    });
+  }
+
+  await espaco.deleteOne();
   res.json(espaco);
 });
 

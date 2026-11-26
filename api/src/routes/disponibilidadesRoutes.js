@@ -1,37 +1,65 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+
+const Disponibilidade = require('../models/Disponibilidade');
+const Espaco = require('../models/Espaco');
+const Reserva = require('../models/Reserva');
+const { idValido, horaValida, hoje, disponibilidadeQueCobre } = require('../utils/validacoes');
 
 const router = express.Router();
 
-const caminho = path.join(__dirname, '../db/disponibilidades.json');
-const caminhoEspacos = path.join(__dirname, '../db/espacos.json');
+/**
+ * Valida os campos de uma disponibilidade e o conflito com outras do mesmo espaço/dia.
+ * Retorna { status, mensagem } se houver erro, ou null se estiver tudo certo.
+ */
+async function validarDisponibilidade(d, idIgnorar = null) {
+  if (!idValido(String(d.espacoId))) return { status: 404, mensagem: 'Espaço não encontrado' };
 
-// Funções auxiliares para disponibilidades
-function lerDisponibilidades() {
-  const dados = fs.readFileSync(caminho, 'utf-8');
-  return JSON.parse(dados);
+  const espaco = await Espaco.findById(d.espacoId);
+  if (!espaco) return { status: 404, mensagem: 'Espaço não encontrado' };
+  if (!espaco.ativo) {
+    return { status: 400, mensagem: 'Não é possível cadastrar disponibilidade para um espaço inativo' };
+  }
+
+  if (!Number.isInteger(d.diaSemana) || d.diaSemana < 0 || d.diaSemana > 6) {
+    return { status: 400, mensagem: 'diaSemana deve estar entre 0 (Domingo) e 6 (Sábado)' };
+  }
+
+  if (!horaValida(d.horaInicio) || !horaValida(d.horaFim)) {
+    return { status: 400, mensagem: 'Horários devem estar no formato HH:MM' };
+  }
+
+  if (d.horaInicio >= d.horaFim) {
+    return { status: 400, mensagem: 'horaInicio deve ser anterior a horaFim' };
+  }
+
+  // Não pode sobrepor outra disponibilidade do mesmo espaço no mesmo dia
+  const conflito = await Disponibilidade.exists({
+    _id: { $ne: idIgnorar },
+    espacoId: d.espacoId,
+    diaSemana: d.diaSemana,
+    horaInicio: { $lt: d.horaFim },
+    horaFim: { $gt: d.horaInicio },
+  });
+
+  if (conflito) {
+    return { status: 409, mensagem: 'Já existe uma disponibilidade para este espaço neste dia e horário' };
+  }
+
+  return null;
 }
 
-function salvarDisponibilidades(disponibilidades) {
-  fs.writeFileSync(caminho, JSON.stringify(disponibilidades, null, 2));
-}
+/**
+ * Conta as reservas confirmadas de hoje em diante do espaço que deixariam de caber
+ * em alguma disponibilidade, considerando a lista de disponibilidades resultante.
+ */
+async function reservasSemCobertura(espacoId, disponibilidadesResultantes) {
+  const reservas = await Reserva.find({
+    espacoId,
+    status: 'CONFIRMADA',
+    data: { $gte: hoje() },
+  });
 
-// Busca um espaço pelo id (retorna o objeto ou undefined)
-function buscarEspaco(espacoId) {
-  const dados = fs.readFileSync(caminhoEspacos, 'utf-8');
-  const espacos = JSON.parse(dados);
-  return espacos.find((e) => e.id === Number(espacoId));
-}
-
-// Verifica se um espaço existe
-function espacoExiste(espacoId) {
-  return buscarEspaco(espacoId) !== undefined;
-}
-
-// Valida o formato "HH:MM"
-function horaValida(hora) {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(hora);
+  return reservas.filter((r) => !disponibilidadeQueCobre(r, disponibilidadesResultantes)).length;
 }
 
 /**
@@ -45,12 +73,12 @@ function horaValida(hora) {
  *     Disponibilidade:
  *       type: object
  *       properties:
- *         id:
- *           type: integer
- *           example: 1
+ *         _id:
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34cd
  *         espacoId:
- *           type: integer
- *           example: 1
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34aa
  *         diaSemana:
  *           type: integer
  *           minimum: 0
@@ -74,8 +102,8 @@ function horaValida(hora) {
  *         - horaFim
  *       properties:
  *         espacoId:
- *           type: integer
- *           example: 1
+ *           type: string
+ *           example: 665f1c2b9a1e4b0012ab34aa
  *         diaSemana:
  *           type: integer
  *           minimum: 0
@@ -100,7 +128,7 @@ function horaValida(hora) {
  *     tags: [Disponibilidades]
  *     responses:
  *       200:
- *         description: Lista de disponibilidades
+ *         description: Lista de disponibilidades ordenada por dia e horário
  *         content:
  *           application/json:
  *             schema:
@@ -108,29 +136,25 @@ function horaValida(hora) {
  *               items:
  *                 $ref: '#/components/schemas/Disponibilidade'
  */
-router.get('/', (req, res) => {
-  const disponibilidades = lerDisponibilidades()
-    .sort((a, b) => a.espacoId - b.espacoId || a.diaSemana - b.diaSemana);
-
-  res.json(disponibilidades);
+router.get('/', async (req, res) => {
+  res.json(await Disponibilidade.find().sort({ diaSemana: 1, horaInicio: 1 }));
 });
 
 /**
  * @swagger
  * /disponibilidades/espaco/{espacoId}:
  *   get:
- *     summary: Lista as disponibilidades de um espaço específico
+ *     summary: Lista as disponibilidades de um espaço
  *     tags: [Disponibilidades]
  *     parameters:
  *       - in: path
  *         name: espacoId
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
- *         description: Disponibilidades do espaço (pode ser lista vazia)
+ *         description: Disponibilidades do espaço (pode ser uma lista vazia)
  *         content:
  *           application/json:
  *             schema:
@@ -139,19 +163,48 @@ router.get('/', (req, res) => {
  *                 $ref: '#/components/schemas/Disponibilidade'
  *       404:
  *         description: Espaço não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.get('/espaco/:espacoId', (req, res) => {
-  const espacoId = Number(req.params.espacoId);
+router.get('/espaco/:espacoId', async (req, res) => {
+  const { espacoId } = req.params;
 
-  if (!espacoExiste(espacoId)) {
+  if (!idValido(espacoId) || !(await Espaco.exists({ _id: espacoId }))) {
     return res.status(404).json({ mensagem: 'Espaço não encontrado' });
   }
 
-  const disponibilidades = lerDisponibilidades()
-    .filter((d) => d.espacoId === espacoId)
-    .sort((a, b) => a.diaSemana - b.diaSemana);
+  res.json(await Disponibilidade.find({ espacoId }).sort({ diaSemana: 1, horaInicio: 1 }));
+});
 
-  res.json(disponibilidades);
+/**
+ * @swagger
+ * /disponibilidades/dia/{diaSemana}:
+ *   get:
+ *     summary: Lista as disponibilidades de um dia da semana
+ *     tags: [Disponibilidades]
+ *     parameters:
+ *       - in: path
+ *         name: diaSemana
+ *         required: true
+ *         description: 0 = Domingo ... 6 = Sábado
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Disponibilidades do dia (pode ser uma lista vazia)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Disponibilidade'
+ */
+router.get('/dia/:diaSemana', async (req, res) => {
+  const dia = Number(req.params.diaSemana);
+  res.json(await Disponibilidade.find({ diaSemana: dia }).sort({ horaInicio: 1 }));
 });
 
 /**
@@ -165,8 +218,7 @@ router.get('/espaco/:espacoId', (req, res) => {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     responses:
  *       200:
  *         description: Disponibilidade encontrada
@@ -176,10 +228,13 @@ router.get('/espaco/:espacoId', (req, res) => {
  *               $ref: '#/components/schemas/Disponibilidade'
  *       404:
  *         description: Disponibilidade não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.get('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const disponibilidade = lerDisponibilidades().find((d) => d.id === id);
+router.get('/:id', async (req, res) => {
+  const disponibilidade = idValido(req.params.id) ? await Disponibilidade.findById(req.params.id) : null;
 
   if (!disponibilidade) {
     return res.status(404).json({ mensagem: 'Disponibilidade não encontrada' });
@@ -208,92 +263,60 @@ router.get('/:id', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Disponibilidade'
  *       400:
- *         description: Campos inválidos, formato de horário incorreto, horaInicio >= horaFim, ou espaço está inativo
+ *         description: Campos inválidos ou espaço inativo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  *       404:
  *         description: Espaço não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  *       409:
- *         description: Já existe disponibilidade para este espaço neste dia e horário
+ *         description: Conflito com outra disponibilidade do mesmo espaço
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { espacoId, diaSemana, horaInicio, horaFim, permiteExterno } = req.body || {};
 
-  if (espacoId === undefined || diaSemana === undefined || !horaInicio || !horaFim) {
-    return res.status(400).json({
-      mensagem: 'espacoId, diaSemana, horaInicio e horaFim são obrigatórios',
-    });
+  if (!espacoId || diaSemana === undefined || diaSemana === '' || !horaInicio || !horaFim) {
+    return res.status(400).json({ mensagem: 'espacoId, diaSemana, horaInicio e horaFim são obrigatórios' });
   }
 
-  const espaco = buscarEspaco(espacoId);
-
-  if (!espaco) {
-    return res.status(404).json({ mensagem: 'Espaço não encontrado' });
-  }
-
-  if (!espaco.ativo) {
-    return res.status(400).json({
-      mensagem: 'Não é possível cadastrar disponibilidade para um espaço inativo',
-    });
-  }
-
-  const dia = Number(diaSemana);
-  if (dia < 0 || dia > 6) {
-    return res.status(400).json({ mensagem: 'diaSemana deve estar entre 0 (Domingo) e 6 (Sábado)' });
-  }
-
-  if (!horaValida(horaInicio) || !horaValida(horaFim)) {
-    return res.status(400).json({ mensagem: 'Horários devem estar no formato HH:MM' });
-  }
-
-  if (horaInicio >= horaFim) {
-    return res.status(400).json({ mensagem: 'horaInicio deve ser anterior a horaFim' });
-  }
-
-  const disponibilidades = lerDisponibilidades();
-
-  const conflito = disponibilidades.some(
-    (d) =>
-      d.espacoId === Number(espacoId) &&
-      d.diaSemana === dia &&
-      d.horaInicio === horaInicio &&
-      d.horaFim === horaFim
-  );
-
-  if (conflito) {
-    return res.status(409).json({
-      mensagem: 'Já existe uma disponibilidade para este espaço neste dia e horário',
-    });
-  }
-
-  const novoId = disponibilidades.reduce((maior, d) => Math.max(maior, d.id), 0) + 1;
-
-  const novaDisponibilidade = {
-    id: novoId,
-    espacoId: Number(espacoId),
-    diaSemana: dia,
+  const nova = {
+    espacoId: String(espacoId),
+    diaSemana: Number(diaSemana),
     horaInicio,
     horaFim,
-    permiteExterno: permiteExterno !== undefined ? Boolean(permiteExterno) : true,
+    permiteExterno: permiteExterno === undefined ? true : Boolean(permiteExterno),
   };
 
-  disponibilidades.push(novaDisponibilidade);
-  salvarDisponibilidades(disponibilidades);
+  const erro = await validarDisponibilidade(nova);
+  if (erro) {
+    return res.status(erro.status).json({ mensagem: erro.mensagem });
+  }
 
-  res.status(201).json(novaDisponibilidade);
+  res.status(201).json(await Disponibilidade.create(nova));
 });
 
 /**
  * @swagger
  * /disponibilidades/{id}:
  *   put:
- *     summary: Atualiza uma disponibilidade
+ *     summary: Atualiza uma disponibilidade (envie só os campos que quer alterar)
+ *     description: Regra — a alteração não pode deixar reservas confirmadas futuras fora de uma disponibilidade.
  *     tags: [Disponibilidades]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 1
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
@@ -308,66 +331,61 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Disponibilidade'
  *       400:
- *         description: Campos inválidos, formato de horário incorreto, horaInicio >= horaFim, ou espaço está inativo
+ *         description: Campos inválidos ou espaço inativo
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  *       404:
  *         description: Disponibilidade ou espaço não encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Conflito com outra disponibilidade ou reservas ficariam sem cobertura
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.put('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const disponibilidades = lerDisponibilidades();
-  const indice = disponibilidades.findIndex((d) => d.id === id);
+router.put('/:id', async (req, res) => {
+  const disponibilidade = idValido(req.params.id) ? await Disponibilidade.findById(req.params.id) : null;
 
-  if (indice === -1) {
+  if (!disponibilidade) {
     return res.status(404).json({ mensagem: 'Disponibilidade não encontrada' });
   }
 
   const { espacoId, diaSemana, horaInicio, horaFim, permiteExterno } = req.body || {};
 
-  if (espacoId !== undefined) {
-    const espaco = buscarEspaco(espacoId);
-    if (!espaco) {
-      return res.status(404).json({ mensagem: 'Espaço não encontrado' });
-    }
-    if (!espaco.ativo) {
-      return res.status(400).json({
-        mensagem: 'Não é possível vincular disponibilidade a um espaço inativo',
-      });
-    }
-  }
-
-  if (diaSemana !== undefined && (Number(diaSemana) < 0 || Number(diaSemana) > 6)) {
-    return res.status(400).json({ mensagem: 'diaSemana deve estar entre 0 e 6' });
-  }
-
-  if (horaInicio !== undefined && !horaValida(horaInicio)) {
-    return res.status(400).json({ mensagem: 'horaInicio deve estar no formato HH:MM' });
-  }
-
-  if (horaFim !== undefined && !horaValida(horaFim)) {
-    return res.status(400).json({ mensagem: 'horaFim deve estar no formato HH:MM' });
-  }
-
-  const atual = disponibilidades[indice];
-  const inicioFinal = horaInicio !== undefined ? horaInicio : atual.horaInicio;
-  const fimFinal = horaFim !== undefined ? horaFim : atual.horaFim;
-
-  if (inicioFinal >= fimFinal) {
-    return res.status(400).json({ mensagem: 'horaInicio deve ser anterior a horaFim' });
-  }
-
   const atualizada = {
-    ...atual,
-    ...(espacoId !== undefined && { espacoId: Number(espacoId) }),
-    ...(diaSemana !== undefined && { diaSemana: Number(diaSemana) }),
-    ...(horaInicio !== undefined && { horaInicio }),
-    ...(horaFim !== undefined && { horaFim }),
-    ...(permiteExterno !== undefined && { permiteExterno: Boolean(permiteExterno) }),
+    espacoId: espacoId !== undefined ? String(espacoId) : String(disponibilidade.espacoId),
+    diaSemana: diaSemana !== undefined && diaSemana !== '' ? Number(diaSemana) : disponibilidade.diaSemana,
+    horaInicio: horaInicio !== undefined ? horaInicio : disponibilidade.horaInicio,
+    horaFim: horaFim !== undefined ? horaFim : disponibilidade.horaFim,
+    permiteExterno: permiteExterno !== undefined ? Boolean(permiteExterno) : disponibilidade.permiteExterno,
   };
 
-  disponibilidades[indice] = atualizada;
-  salvarDisponibilidades(disponibilidades);
+  const erro = await validarDisponibilidade(atualizada, disponibilidade._id);
+  if (erro) {
+    return res.status(erro.status).json({ mensagem: erro.mensagem });
+  }
 
-  res.json(atualizada);
+  // Reservas do espaço antigo precisam continuar cobertas pelas disponibilidades que sobram
+  const espacoAntigo = String(disponibilidade.espacoId);
+  const outras = await Disponibilidade.find({ espacoId: espacoAntigo, _id: { $ne: disponibilidade._id } });
+  const resultantes = atualizada.espacoId === espacoAntigo ? [...outras, atualizada] : outras;
+  const descobertas = await reservasSemCobertura(espacoAntigo, resultantes);
+
+  if (descobertas > 0) {
+    return res.status(409).json({
+      mensagem: `Não é possível alterar: ${descobertas} reserva(s) confirmada(s) futura(s) ficariam fora da disponibilidade. Cancele-as antes.`,
+    });
+  }
+
+  disponibilidade.set(atualizada);
+  await disponibilidade.save();
+  res.json(disponibilidade);
 });
 
 /**
@@ -375,14 +393,14 @@ router.put('/:id', (req, res) => {
  * /disponibilidades/{id}:
  *   delete:
  *     summary: Remove uma disponibilidade
+ *     description: Regra — não é possível excluir se reservas confirmadas futuras dependerem dela.
  *     tags: [Disponibilidades]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         example: 3
+ *           type: string
  *     responses:
  *       200:
  *         description: Disponibilidade removida
@@ -392,18 +410,37 @@ router.put('/:id', (req, res) => {
  *               $ref: '#/components/schemas/Disponibilidade'
  *       404:
  *         description: Disponibilidade não encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
+ *       409:
+ *         description: Reservas confirmadas futuras dependem desta disponibilidade
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Erro'
  */
-router.delete('/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const disponibilidades = lerDisponibilidades();
-  const disponibilidade = disponibilidades.find((d) => d.id === id);
+router.delete('/:id', async (req, res) => {
+  const disponibilidade = idValido(req.params.id) ? await Disponibilidade.findById(req.params.id) : null;
 
   if (!disponibilidade) {
     return res.status(404).json({ mensagem: 'Disponibilidade não encontrada' });
   }
 
-  salvarDisponibilidades(disponibilidades.filter((d) => d.id !== id));
+  const outras = await Disponibilidade.find({
+    espacoId: disponibilidade.espacoId,
+    _id: { $ne: disponibilidade._id },
+  });
+  const descobertas = await reservasSemCobertura(disponibilidade.espacoId, outras);
 
+  if (descobertas > 0) {
+    return res.status(409).json({
+      mensagem: `Não é possível excluir: ${descobertas} reserva(s) confirmada(s) futura(s) dependem desta disponibilidade. Cancele-as antes.`,
+    });
+  }
+
+  await disponibilidade.deleteOne();
   res.json(disponibilidade);
 });
 
