@@ -1,0 +1,69 @@
+/* Tokens do design system (cores, tipografia, espaçamento, raios, sombras e fontes) */
+@import './tokens/fonts.css';
+@import './tokens/colors.css';
+@import './tokens/typography.css';
+@import './tokens/spacing.css';
+@import './tokens/effects.css';
+
+/* Base (equivalente ao tokens/base.css do design system, aplicado ao body) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font: var(--type-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--text-gold);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--primary-hover);
+}
+
+::selection {
+  background: var(--gold-600);
+  color: var(--ink-50);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-600);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Campos de data/hora nativos com ícone claro no tema escuro */
+input[type='date'],
+input[type='time'] {
+  color-scheme: dark;
+}
+
+/* Foco visível pelo teclado em links e botões */
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}

@@ -1,0 +1,41 @@
+:root{
+--font-sans:'Hanken Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+--font-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+--font-icon:'Material Symbols Outlined';
+
+--fw-light:300; /* @kind font */
+--fw-regular:400; /* @kind font */
+--fw-medium:500; /* @kind font */
+--fw-semibold:600; /* @kind font */
+--fw-bold:700; /* @kind font */
+
+/* Scale (size / line-height) */
+--fs-display:40px;--lh-display:48px;
+--fs-headline-lg:32px;--lh-headline-lg:40px;
+--fs-headline-md:26px;--lh-headline-md:32px;
+--fs-title-lg:22px;--lh-title-lg:28px;
+--fs-title-md:20px;--lh-title-md:26px;
+--fs-title-sm:16px;--lh-title-sm:22px;
+--fs-body-lg:16px;--lh-body-lg:24px;
+--fs-body-md:14px;--lh-body-md:20px;
+--fs-body-sm:13px;--lh-body-sm:18px;
+--fs-caption:12px;--lh-caption:16px;
+--fs-label:12px;--lh-label:16px;
+--fs-label-sm:11px;--lh-label-sm:14px;
+--fs-micro:10px;--lh-micro:12px;
+--fs-amount-xl:36px;--lh-amount-xl:40px;
+--fs-amount-lg:24px;--lh-amount-lg:30px;
+
+--tracking-tight:-0.01em;
+--tracking-normal:0;
+--tracking-caps:0.06em;
+--tracking-caps-wide:0.1em;
+
+/* Semantic roles */
+--type-page-title:var(--fw-medium) var(--fs-headline-md)/var(--lh-headline-md) var(--font-sans);
+--type-modal-title:var(--fw-medium) var(--fs-title-lg)/var(--lh-title-lg) var(--font-sans);
+--type-card-title:var(--fw-medium) var(--fs-title-sm)/var(--lh-title-sm) var(--font-sans);
+--type-body:var(--fw-regular) var(--fs-body-md)/var(--lh-body-md) var(--font-sans);
+--type-label-caps:var(--fw-bold) var(--fs-label-sm)/var(--lh-label-sm) var(--font-sans);
+--type-mono:var(--fw-medium) var(--fs-caption)/var(--lh-caption) var(--font-mono);
+}
