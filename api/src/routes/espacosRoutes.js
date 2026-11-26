@@ -213,7 +213,7 @@ router.post('/', async (req, res) => {
  * /espacos/{id}:
  *   put:
  *     summary: Atualiza um espaço (envie só os campos que quer alterar)
- *     description: Regra — não é possível inativar um espaço com reservas confirmadas a partir de hoje.
+ *     description: Regra: não é possível inativar um espaço com reservas confirmadas a partir de hoje.
  *     tags: [Espaços]
  *     parameters:
  *       - in: path
@@ -287,7 +287,7 @@ router.put('/:id', async (req, res) => {
     });
     if (futuras > 0) {
       return res.status(409).json({
-        mensagem: `Não é possível inativar: o espaço possui ${futuras} reserva(s) confirmada(s) a partir de hoje. Cancele-as antes.`,
+        mensagem: "Este espaço tem reservas futuras. Cancele as reservas antes de inativar.",
       });
     }
   }
@@ -306,7 +306,7 @@ router.put('/:id', async (req, res) => {
  * /espacos/{id}:
  *   delete:
  *     summary: Remove um espaço
- *     description: Regra — não é possível excluir um espaço que tenha disponibilidades ou reservas.
+ *     description: Regra: não é possível excluir um espaço que tenha disponibilidades ou reservas.
  *     tags: [Espaços]
  *     parameters:
  *       - in: path
@@ -344,14 +344,14 @@ router.delete('/:id', async (req, res) => {
   const totalReservas = await Reserva.countDocuments({ espacoId: espaco._id });
   if (totalReservas > 0) {
     return res.status(409).json({
-      mensagem: `Não é possível excluir: o espaço possui ${totalReservas} reserva(s). Cancele e exclua as reservas antes.`,
+      mensagem: "Este espaço tem reservas e não pode ser excluído.",
     });
   }
 
   const totalDisponibilidades = await Disponibilidade.countDocuments({ espacoId: espaco._id });
   if (totalDisponibilidades > 0) {
     return res.status(409).json({
-      mensagem: `Não é possível excluir: o espaço possui ${totalDisponibilidades} disponibilidade(s). Exclua as disponibilidades antes.`,
+      mensagem: "Este espaço tem disponibilidades cadastradas. Exclua as disponibilidades antes.",
     });
   }
 

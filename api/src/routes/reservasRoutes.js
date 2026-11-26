@@ -598,7 +598,7 @@ router.put('/:id', async (req, res) => {
  * /reservas/{id}:
  *   delete:
  *     summary: Remove uma reserva
- *     description: Regra — só é possível excluir reservas CANCELADAS (cancele primeiro).
+ *     description: Regra: só é possível excluir reservas canceladas.
  *     tags: [Reservas]
  *     parameters:
  *       - in: path
@@ -634,7 +634,7 @@ router.delete('/:id', async (req, res) => {
   }
 
   if (reserva.status !== 'CANCELADA') {
-    return res.status(409).json({ mensagem: 'Só é possível excluir reservas canceladas. Cancele a reserva primeiro.' });
+    return res.status(409).json({ mensagem: 'Cancele a reserva antes de excluir.' });
   }
 
   await reserva.deleteOne();

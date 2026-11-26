@@ -363,7 +363,7 @@ router.put('/:id', async (req, res) => {
  * /empresas/{id}:
  *   delete:
  *     summary: Remove uma empresa
- *     description: Regra — não é possível excluir uma empresa vinculada a reservas.
+ *     description: Regra: não é possível excluir uma empresa vinculada a reservas.
  *     tags: [Empresas]
  *     parameters:
  *       - in: path
@@ -401,7 +401,7 @@ router.delete('/:id', async (req, res) => {
   const totalReservas = await Reserva.countDocuments({ empresaId: empresa._id });
   if (totalReservas > 0) {
     return res.status(409).json({
-      mensagem: `Não é possível excluir: a empresa está vinculada a ${totalReservas} reserva(s). Cancele e exclua as reservas antes.`,
+      mensagem: "Esta empresa tem reservas e não pode ser excluída.",
     });
   }
 

@@ -309,7 +309,7 @@ router.post('/', async (req, res) => {
  * /disponibilidades/{id}:
  *   put:
  *     summary: Atualiza uma disponibilidade (envie só os campos que quer alterar)
- *     description: Regra — a alteração não pode deixar reservas confirmadas futuras fora de uma disponibilidade.
+ *     description: Regra: a alteração não pode deixar reservas confirmadas futuras fora de uma disponibilidade.
  *     tags: [Disponibilidades]
  *     parameters:
  *       - in: path
@@ -379,7 +379,7 @@ router.put('/:id', async (req, res) => {
 
   if (descobertas > 0) {
     return res.status(409).json({
-      mensagem: `Não é possível alterar: ${descobertas} reserva(s) confirmada(s) futura(s) ficariam fora da disponibilidade. Cancele-as antes.`,
+      mensagem: "Existem reservas futuras nesse horário. Cancele essas reservas antes de alterar.",
     });
   }
 
@@ -393,7 +393,7 @@ router.put('/:id', async (req, res) => {
  * /disponibilidades/{id}:
  *   delete:
  *     summary: Remove uma disponibilidade
- *     description: Regra — não é possível excluir se reservas confirmadas futuras dependerem dela.
+ *     description: Regra: não é possível excluir se reservas confirmadas futuras dependerem dela.
  *     tags: [Disponibilidades]
  *     parameters:
  *       - in: path
@@ -436,7 +436,7 @@ router.delete('/:id', async (req, res) => {
 
   if (descobertas > 0) {
     return res.status(409).json({
-      mensagem: `Não é possível excluir: ${descobertas} reserva(s) confirmada(s) futura(s) dependem desta disponibilidade. Cancele-as antes.`,
+      mensagem: "Existem reservas futuras nesse horário. Cancele essas reservas antes de excluir.",
     });
   }
 

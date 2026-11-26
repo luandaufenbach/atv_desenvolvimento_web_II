@@ -326,8 +326,7 @@ router.put('/:id', async (req, res) => {
  *   delete:
  *     summary: Remove um usuário
  *     description: |
- *       Regras: não é possível excluir um usuário que possui reservas (mesmo canceladas —
- *       exclua as reservas antes) nem o próprio usuário logado (header x-usuario-id).
+ *       Regras: não é possível excluir um usuário que possui reservas (mesmo canceladas) nem o próprio usuário logado (header x-usuario-id).
  *     tags: [Usuários]
  *     parameters:
  *       - in: path
@@ -375,7 +374,7 @@ router.delete('/:id', async (req, res) => {
   const totalReservas = await Reserva.countDocuments({ usuarioId: usuario._id });
   if (totalReservas > 0) {
     return res.status(409).json({
-      mensagem: `Não é possível excluir: o usuário possui ${totalReservas} reserva(s). Cancele e exclua as reservas antes.`,
+      mensagem: "Este usuário tem reservas e não pode ser excluído.",
     });
   }
 
