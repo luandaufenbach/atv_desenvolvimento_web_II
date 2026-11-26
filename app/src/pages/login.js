@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 
 import Alert from '@/components/ui/Alert';
 import Button from '@/components/ui/Button';
-import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
 import TextField from '@/components/ui/TextField';
 import Marca from '@/components/Marca';
@@ -58,7 +57,7 @@ export default function Login() {
   return (
     <>
       <Head>
-        <title>Entrar · Gestão de Espaços</title>
+        <title>Login | Gestão de Espaços</title>
       </Head>
 
       <main
@@ -68,10 +67,10 @@ export default function Login() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '48px 24px',
-          background: 'var(--glow-gold), var(--bg-app)',
+          background: 'var(--bg-app)',
         }}
       >
-        <div style={{ width: 400, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: 28 }}>
+        <div style={{ width: 380, maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <Marca />
 
           <section
@@ -79,26 +78,17 @@ export default function Login() {
               background: 'var(--surface-card)',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-xl)',
-              boxShadow: 'var(--shadow-raised)',
-              padding: 28,
+              padding: 24,
             }}
           >
-            <h1 style={{ margin: 0, font: 'var(--type-modal-title)', color: 'var(--text-primary)' }}>Entrar</h1>
-            <p style={{ margin: '6px 0 0', font: '400 14px/20px var(--font-sans)', color: 'var(--text-muted)' }}>
-              Acesse o painel com seu e-mail e senha.
-            </p>
+            <h1 style={{ margin: '0 0 20px', font: 'var(--type-modal-title)', color: 'var(--text-primary)' }}>Login</h1>
 
-            <div style={{ height: 1, background: 'var(--border-default)', margin: '20px 0' }} />
-
-            <form onSubmit={handleLogin} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <form onSubmit={handleLogin} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <TextField
                 label="E-mail"
                 type="email"
                 name="email"
                 autoComplete="username"
-                placeholder="ex.: ana@email.com"
-                prefixIcon="mail"
-                size="lg"
                 value={credenciais.email}
                 onChange={handleChange}
                 autoFocus
@@ -109,9 +99,6 @@ export default function Login() {
                 type={mostrarSenha ? 'text' : 'password'}
                 name="senha"
                 autoComplete="current-password"
-                placeholder="Sua senha"
-                prefixIcon="lock"
-                size="lg"
                 value={credenciais.senha}
                 onChange={handleChange}
                 suffix={
@@ -126,16 +113,11 @@ export default function Login() {
 
               <Alert mensagem={mensagem} />
 
-              <Button type="submit" size="lg" caps fullWidth iconRight={enviando ? undefined : 'arrow_forward'} disabled={enviando}>
+              <Button type="submit" size="lg" fullWidth disabled={enviando} style={{ marginTop: 4 }}>
                 {enviando ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
           </section>
-
-          <p style={{ margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, font: '400 12px/16px var(--font-sans)', color: 'var(--text-muted)' }}>
-            <Icon name="shield" size={16} />
-            Acesso restrito a usuários cadastrados.
-          </p>
         </div>
       </main>
     </>
